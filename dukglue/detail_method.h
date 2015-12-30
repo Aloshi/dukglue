@@ -11,6 +11,10 @@ namespace dukglue
 		{
 			typedef RetType(Cls::*MethodType)(Ts...);
 
+			// The size of a method pointer is not guaranteed to be the same size as a function pointer.
+			// This means we can't just use duk_push_pointer(ctx, &MyClass::method) to store the method at run time.
+			// To get around this, we wrap the method pointer in a MethodHolder (on the heap), and push a pointer to
+			// that. The MethodHolder is cleaned up by the finalizer.
 			struct MethodHolder
 			{
 				MethodType method;
@@ -65,6 +69,18 @@ namespace dukglue
 
 			struct MethodRuntime
 			{
+				static duk_ret_t finalize_method(duk_context* ctx)
+				{
+					// clean up the MethodHolder reference
+					duk_get_prop_string(ctx, 0, "\xFF" "method_holder");
+
+					void* method_holder_void = duk_require_pointer(ctx, -1);
+					MethodHolder* method_holder = static_cast<MethodHolder*>(method_holder_void);
+					delete method_holder;
+
+					return 0;
+				}
+
 				static duk_ret_t call_native_method(duk_context* ctx)
 				{
 					// get this.obj_ptr

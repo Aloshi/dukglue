@@ -44,7 +44,7 @@ void dukglue_register_method(duk_context* ctx, RetType(Cls::*method)(Ts...), con
 	typedef dukglue::detail::ClassInfo<Cls> ClassInfo;
 	typedef dukglue::detail::MethodInfo<Cls, RetType, Ts...> MethodInfo;
 
-	duk_c_function method_func = dukglue::detail::MethodInfo<Cls, RetType, Ts...>::MethodRuntime::call_native_method;
+	duk_c_function method_func = MethodInfo::MethodRuntime::call_native_method;
 
 	ClassInfo::push_prototype(ctx);
 	
@@ -52,6 +52,10 @@ void dukglue_register_method(duk_context* ctx, RetType(Cls::*method)(Ts...), con
 
 	duk_push_pointer(ctx, new MethodInfo::MethodHolder{method});
 	duk_put_prop_string(ctx, -2, "\xFF" "method_holder"); // consumes raw method pointer
+
+	// make sure we delete the method_holder when this function is removed
+	duk_push_c_function(ctx, MethodInfo::MethodRuntime::finalize_method, 1);
+	duk_set_finalizer(ctx, -2);
 
 	duk_put_prop_string(ctx, -2, name); // consumes method function
 
