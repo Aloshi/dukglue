@@ -3,31 +3,57 @@
 #include "detail_class.h"
 #include "detail_method.h"
 
+// Set the constructor for the given type.
 template<class Cls, typename... Ts>
-void dukglue_register_class(duk_context* ctx, const char* name)
+void dukglue_register_constructor(duk_context* ctx, const char* name)
 {
-	duk_c_function constructorFunc = dukglue::detail::call_native_constructor<Cls>;
+	typedef dukglue::detail::ClassInfo<Cls> ClassInfo;
 
-	duk_push_c_function(ctx, constructorFunc, sizeof...(Ts));
+	duk_c_function constructor_func = dukglue::detail::ClassInfo<Cls>::call_native_constructor<Ts...>;
 
-	// put an empty object for the constructor.prototype
-	duk_push_object(ctx);
+	duk_push_c_function(ctx, constructor_func, sizeof...(Ts));
+
+	// set constructor_func.prototype
+	ClassInfo::push_prototype(ctx);
 	duk_put_prop_string(ctx, -2, "prototype");
 
-	// set name = constructor
+	// set name = constructor_func
 	duk_put_global_string(ctx, name);
 }
 
+// methods
 template<class Cls, typename T, T Value, typename RetType, typename... Ts>
-void dukglue_register_method(duk_context* ctx, const char* className, const char* name, RetType(Cls::*func)(Ts...))
+void dukglue_register_method_compiletime(duk_context* ctx, RetType(Cls::*func)(Ts...), const char* name)
 {
-	duk_c_function methodFunc = dukglue::detail::MethodInfoHolder<Cls, RetType, Ts...>::MethodActual<Value>::call_native_method;
+	typedef dukglue::detail::ClassInfo<Cls> ClassInfo;
+	typedef dukglue::detail::MethodInfo<Cls, RetType, Ts...> MethodInfo;
 
-	duk_get_global_string(ctx, className);
-	duk_get_prop_string(ctx, -1, "prototype");
+	duk_c_function method_func = MethodInfo::MethodCompiletime<Value>::call_native_method;
 
-	duk_push_c_function(ctx, methodFunc, sizeof...(Ts));
+	ClassInfo::push_prototype(ctx);
+
+	duk_push_c_function(ctx, method_func, sizeof...(Ts));
 	duk_put_prop_string(ctx, -2, name); // consumes func above
 
-	duk_pop_2(ctx); // pop prototype + constructor func
+	duk_pop(ctx); // pop prototype
+}
+
+template<class Cls, typename RetType, typename... Ts>
+void dukglue_register_method(duk_context* ctx, RetType(Cls::*method)(Ts...), const char* name)
+{
+	typedef dukglue::detail::ClassInfo<Cls> ClassInfo;
+	typedef dukglue::detail::MethodInfo<Cls, RetType, Ts...> MethodInfo;
+
+	duk_c_function method_func = dukglue::detail::MethodInfo<Cls, RetType, Ts...>::MethodRuntime::call_native_method;
+
+	ClassInfo::push_prototype(ctx);
+	
+	duk_push_c_function(ctx, method_func, sizeof...(Ts));
+
+	duk_push_pointer(ctx, new MethodInfo::MethodHolder{method});
+	duk_put_prop_string(ctx, -2, "\xFF" "method_holder"); // consumes raw method pointer
+
+	duk_put_prop_string(ctx, -2, name); // consumes method function
+
+	duk_pop(ctx); // pop prototype
 }

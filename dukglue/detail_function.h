@@ -16,9 +16,12 @@ namespace dukglue
 			typedef RetType(*FuncType)(Ts...);
 
 			template<FuncType funcToCall>
-			struct FuncActual
+			struct FuncCompiletime
 			{
-				// This is the function of interest.
+				// The function to call is embedded into call_native_function at
+				// compile-time through template magic.
+				// Performance is so similar to run-time function calls that
+				// this is not recommended due to the ugly syntax it requires.
 				static duk_ret_t call_native_function(duk_context* ctx)
 				{
 					// get_stack_values may throw a DukTypeErrorException
@@ -48,7 +51,8 @@ namespace dukglue
 
 			struct FuncRuntime
 			{
-				// This is the function of interest.
+				// Pull the address of the function to call from the
+				// Duktape function object at run time.
 				static duk_ret_t call_native_function(duk_context* ctx)
 				{
 					duk_push_current_function(ctx);

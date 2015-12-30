@@ -89,6 +89,19 @@ namespace dukglue
 			return apply_method_helper(pf, typename make_indexes<Args...>::type(), obj, std::tuple<Args...>(tup));
 		}
 
+		// constructor
+		template<class Cls, typename... Args, size_t... Indexes >
+		Cls* apply_constructor_helper(index_tuple< Indexes... >, std::tuple<Args...>&& tup)
+		{
+			return new Cls(std::forward<Args>(std::get<Indexes>(tup))...);
+		}
+
+		template<class Cls, typename... Args>
+		Cls* apply_constructor(const std::tuple<Args...>&& tup)
+		{
+			return apply_constructor_helper<Cls>(typename make_indexes<Args...>::type(), std::tuple<Args...>(tup));
+		}
+
 		//////////////////////////////////////////////////////////////////////////////////////////////
 
 
