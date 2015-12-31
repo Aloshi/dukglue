@@ -2,8 +2,9 @@
 
 #include "detail_stack.h"
 #include "detail_traits.h"
+#include "detail_typeinfo.h"
 
-#include <typeinfo>
+#include <map>
 
 namespace dukglue
 {
@@ -51,20 +52,30 @@ namespace dukglue
 				// has this class's prototype been accessed before?
 				if (s_heap_stash_idx_ == 0) {
 					// nope, need to create our prototype object
-					// this code does something like this:
-
-					// s_heap_stash_idx = dukglue_prototypes.length;
-					// dukglue_prototypes[dukglue_prototypes.length] = {
-					//   {
-					//     typeinfo: ...
-					//   }
-					// };
-
 					duk_push_object(ctx);
 
 					// add reference to this class' info object so we can do type checking
 					// when trying to pass this object into method calls
-					// TODO
+					typedef dukglue::detail::TypeInfo TypeInfo;
+					TypeInfo* info = new TypeInfo(typeid(Cls));
+
+					duk_push_pointer(ctx, info);
+					duk_put_prop_string(ctx, -2, "\xFF" "type_info");
+
+					// Clean up the TypeInfo object when this prototype is destroyed.
+					// We can't put a finalizer directly on this prototype, because it
+					// will be run whenever the wrapper for an object of this class is
+					// destroyed; instead, we make a dummy object and put the finalizer
+					// on that.
+					// Warning if you're memory paranoid: this duplicates the type_info
+					// pointer. If you don't care about freeing memory during shutdown,
+					// you can probably comment out this part.
+					duk_push_object(ctx);
+					duk_push_pointer(ctx, info);
+					duk_put_prop_string(ctx, -2, "\xFF" "type_info");
+					duk_push_c_function(ctx, type_info_finalizer, 1);
+					duk_set_finalizer(ctx, -2);
+					duk_put_prop_string(ctx, -2, "\xFF" "type_info_finalizer");
 
 					// register it in the stash and update our index
 					s_heap_stash_idx_ = duk_get_length(ctx, -2);
@@ -79,6 +90,19 @@ namespace dukglue
 
 		private:
 			static duk_size_t s_heap_stash_idx_;
+
+			static duk_ret_t type_info_finalizer(duk_context* ctx)
+			{
+				duk_get_prop_string(ctx, 0, "\xFF" "type_info");
+				dukglue::detail::TypeInfo* info = static_cast<dukglue::detail::TypeInfo*>(duk_require_pointer(ctx, -1));
+				delete info;
+
+				// set pointer to NULL in case this finalizer runs again
+				duk_push_pointer(ctx, NULL);
+				duk_put_prop_string(ctx, 0, "\xFF" "type_info");
+
+				return 0;
+			}
 
 			// puts heap_stash["dukglue_prototypes"] on the stack,
 			// or creates it if it doesn't exist
@@ -113,6 +137,6 @@ namespace dukglue
 
 		// initialize static members
 		template<class Cls>
-		duk_size_t ClassInfo<Cls>::s_heap_stash_idx_ = 0;
+		duk_size_t ClassInfo<Cls>::s_heap_stash_idx_ = 0; // 0 means no prototype has been created
 	}
 }

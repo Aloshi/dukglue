@@ -115,13 +115,50 @@ private:
 };
 
 
+// Inheritance test
+
+class Shape
+{
+public:
+	virtual int getNumber() = 0;
+};
+
+class Circle : public Shape
+{
+public:
+	int getNumber() override {
+		return 2;
+	}
+};
+
+class Dog
+{
+public:
+	void bark() {
+		std::cout << "WOOF WOOF MOTHERFUCKER" << std::endl;
+	}
+};
+
+void printName(Shape* shape)
+{
+	std::cout << "Shape name: " << shape->getNumber() << std::endl;
+}
+
 int main()
 {
 	duk_context* ctx = duk_create_heap_default();
 
-	dukglue_register_constructor<TestClass>(ctx, "TestClass");
-	dukglue_register_method(ctx, &TestClass::incCounter, "incCounter");
-	dukglue_register_method(ctx, &TestClass::printCounter, "printCounter");
+	dukglue_register_constructor<Circle>(ctx, "Circle");
+	dukglue_register_method<Shape>(ctx, &Shape::getNumber, "getNumber");
+	dukglue_set_base_class<Shape, Circle>(ctx);
+
+	dukglue_register_constructor<Dog>(ctx, "Dog");
+
+	dukglue_register_function(ctx, printName, "printName");
+
+	//dukglue_register_constructor<TestClass>(ctx, "TestClass");
+	//dukglue_register_method(ctx, &TestClass::incCounter, "incCounter");
+	//dukglue_register_method(ctx, &TestClass::printCounter, "printCounter");
 
 	/*
 	timeTest("Compile-time lookup method calls", ctx,
@@ -157,8 +194,10 @@ int main()
 	);
 	*/
 
-	if (duk_peval_string(ctx, "var test = new TestClass(); test.incCounter(1); test.printCounter();")) {
-		std::cout << "Error: " << duk_safe_to_string(ctx, -1);
+	//if (duk_peval_string(ctx, "var test = new TestClass(); test.incCounter(1); test.printCounter();")) {
+	if (duk_peval_string(ctx, "var test = new Dog(); printName(test);")) {
+		duk_get_prop_string(ctx, -1, "stack");
+		std::cout << duk_safe_to_string(ctx, -1) << std::endl;
 		duk_pop(ctx);
 	}
 

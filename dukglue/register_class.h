@@ -21,6 +21,37 @@ void dukglue_register_constructor(duk_context* ctx, const char* name)
 	duk_put_global_string(ctx, name);
 }
 
+template<class Base, class Derived>
+void dukglue_set_base_class(duk_context* ctx)
+{
+	static_assert(!std::is_pointer<Base>::value && !std::is_pointer<Derived>::value
+		&& !std::is_const<Base>::value && !std::is_const<Derived>::value, "Use bare class names.");
+	static_assert(std::is_base_of<Base, Derived>::value, "Invalid class hierarchy!");
+
+	typedef dukglue::detail::ClassInfo<Base> BaseClassInfo;
+	typedef dukglue::detail::ClassInfo<Derived> DerivedClassInfo;
+	typedef dukglue::detail::TypeInfo TypeInfo;
+
+	// Derived.type_info->set_base(Base.type_info)
+	DerivedClassInfo::push_prototype(ctx);
+	duk_get_prop_string(ctx, -1, "\xFF" "type_info");
+	TypeInfo* derived_type_info = static_cast<TypeInfo*>(duk_require_pointer(ctx, -1));
+	duk_pop_2(ctx);
+
+	BaseClassInfo::push_prototype(ctx);
+	duk_get_prop_string(ctx, -1, "\xFF" "type_info");
+	TypeInfo* base_type_info = static_cast<TypeInfo*>(duk_require_pointer(ctx, -1));
+	duk_pop_2(ctx);
+
+	derived_type_info->set_base(base_type_info);
+
+	// also set up the prototype chain
+	DerivedClassInfo::push_prototype(ctx);
+	BaseClassInfo::push_prototype(ctx);
+	duk_set_prototype(ctx, -2);
+	duk_pop(ctx);
+}
+
 // methods
 template<class Cls, typename T, T Value, typename RetType, typename... Ts>
 void dukglue_register_method_compiletime(duk_context* ctx, RetType(Cls::*func)(Ts...), const char* name)

@@ -18,6 +18,7 @@ namespace dukglue
 		// Will NOT try to coerce types.
 		// If a value is not found on the stack, or the value is of the wrong type,
 		// a DukTypeErrorException() will be thrown.
+		// This has to be templated since overloads differ only by return type.
 		template<typename T>
 		T read_value(duk_context* ctx, duk_idx_t arg_idx);
 
@@ -27,26 +28,59 @@ namespace dukglue
 		inline RET_TYPE read_value(duk_context* ctx, duk_idx_t arg_idx) \
 		{ \
 			if (DUK_IS_FUNC(ctx, arg_idx)) { \
-				return RET_TYPE(DUK_GET_FUNC(ctx, arg_idx)); \
+				return static_cast<RET_TYPE>(DUK_GET_FUNC(ctx, arg_idx)); \
 			} else { \
 				duk_error(ctx, DUK_ERR_TYPE_ERROR, "Argument %d: expected %s", arg_idx, TYPE_NAME); \
 				throw DukTypeErrorException(); \
 			} \
 		} \
 
-		DUK_READ_VALUE_MACRO(int, duk_is_number, duk_get_number, "number")
+		DUK_READ_VALUE_MACRO(int, duk_is_number, duk_get_int, "number")
 		DUK_READ_VALUE_MACRO(float, duk_is_number, duk_get_number, "number")
 		DUK_READ_VALUE_MACRO(double, duk_is_number, duk_get_number, "number")
 		DUK_READ_VALUE_MACRO(std::string, duk_is_string, duk_get_string, "string")
+		DUK_READ_VALUE_MACRO(const char*, duk_is_string, duk_get_string, "string")
 		DUK_READ_VALUE_MACRO(bool, duk_is_boolean, 0 != duk_get_boolean, "boolean")  // "0 !=" to prevent a warning on MSVC
 
 		template<typename T>
-		void push_value(duk_context* ctx, const T& value);
+		T read_value<T*>(duk_context* ctx, duk_idx_t arg_idx)
+		{
+			if (duk_is_null(ctx, arg_idx))
+				return nullptr;
+
+			if (!duk_is_object(ctx, arg_idx))
+				duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: expected native object", arg_idx);
+
+			duk_get_prop_string(ctx, arg_idx, "\xFF" "type_info");
+			if (!duk_is_pointer(ctx, -1))  // missing type_info, must not be a native object
+				duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: expected native object", arg_idx);
+
+			// make sure this object can be safely returned as a T*
+			TypeInfo* info = static_cast<TypeInfo*>(duk_get_pointer(ctx, -1));
+			if (!info->can_cast< std::remove_pointer<T>::type >())
+				duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: wrong type of native object", arg_idx);
+
+			duk_pop(ctx);  // pop type_info
+
+			duk_get_prop_string(ctx, arg_idx, "\xFF" "obj_ptr");
+			if (!duk_is_pointer(ctx, -1))
+				duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: missing object pointer?!", arg_idx);
+
+			T obj = static_cast<T>(duk_get_pointer(ctx, -1));
+
+			duk_pop(ctx);  // pop obj_ptr
+
+			return obj;
+		}
+
+
+		template<typename T>
+		void push_value(duk_context* ctx, T value);
 
 		// Just calls duk_push_* for the given type.
 		#define DUK_PUSH_VALUE_MACRO(TYPE, PUSH_FUNC, VALUE) \
 		template<> \
-		inline void push_value(duk_context* ctx, const TYPE& value) \
+		inline void push_value(duk_context* ctx, TYPE value) \
 		{ \
 			PUSH_FUNC(ctx, VALUE); \
 		} \
@@ -54,7 +88,8 @@ namespace dukglue
 		DUK_PUSH_VALUE_MACRO(int, duk_push_int, value);
 		DUK_PUSH_VALUE_MACRO(float, duk_push_number, value);
 		DUK_PUSH_VALUE_MACRO(double, duk_push_number, value);
-		DUK_PUSH_VALUE_MACRO(std::string, duk_push_string, value.c_str());
+		DUK_PUSH_VALUE_MACRO(const std::string&, duk_push_string, value.c_str());
+		DUK_PUSH_VALUE_MACRO(const char*, duk_push_string, value);
 		DUK_PUSH_VALUE_MACRO(bool, duk_push_boolean, value);
 
 		// Call read_value for every Ts[i], for matching argument index Index[i].
