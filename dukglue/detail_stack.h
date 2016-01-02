@@ -1,6 +1,5 @@
 #pragma once
 
-#include <exception>
 #include <string>
 
 #include "detail_traits.h"
@@ -12,13 +11,10 @@ namespace dukglue
 {
 	namespace detail
 	{
-		// Thrown when a read_value<T>() call encounters a type mismatch.
-		class DukTypeErrorException : public std::exception {};
-
 		// Used to read a value from ctx at stack position arg_idx.
 		// Will NOT try to coerce types.
 		// If a value is not found on the stack, or the value is of the wrong type,
-		// a DukTypeErrorException() will be thrown.
+		// duk_error() will be called, and the function will not return.
 		// This has to be templated since overloads differ only by return type.
 		template<typename T>
 		T read_value(duk_context* ctx, duk_idx_t arg_idx);
@@ -32,7 +28,6 @@ namespace dukglue
 				return static_cast<RET_TYPE>(DUK_GET_FUNC(ctx, arg_idx)); \
 			} else { \
 				duk_error(ctx, DUK_ERR_TYPE_ERROR, "Argument %d: expected %s", arg_idx, TYPE_NAME); \
-				throw DukTypeErrorException(); \
 			} \
 		} \
 
@@ -122,7 +117,7 @@ namespace dukglue
 		// Values will remain on the stack.
 		// Values are indexed from the bottom of the stack up (0, 1, ...).
 		// If a value does not exist or does not have the expected type, an error is thrown
-		// on the Duktape stack (through duk_error(...)), and a DukTypeErrorException is thrown.
+		// through Duktape (with duk_error(...)), and the function does not return.
 		template<typename... Ts>
 		std::tuple<Ts...> get_stack_values(duk_context* ctx)
 		{

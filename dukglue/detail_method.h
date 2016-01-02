@@ -40,15 +40,8 @@ namespace dukglue
 					Cls* obj = static_cast<Cls*>(obj_void);
 
 					// read arguments and call function
-					// get_stack_values may throw a DukTypeErrorException
-					try {
-						actually_call<RetType>(ctx, obj, dukglue::detail::get_stack_values<Ts...>(ctx));
-						return std::is_void<RetType>::value ? 0 : 1;
-					}
-					catch (DukTypeErrorException&)
-					{
-						return DUK_RET_TYPE_ERROR;
-					}
+					actually_call<RetType>(ctx, obj, dukglue::detail::get_stack_values<Ts...>(ctx));
+					return std::is_void<RetType>::value ? 0 : 1;
 				}
 
 				// this mess is to support functions with void return values
@@ -108,16 +101,9 @@ namespace dukglue
 					Cls* obj = static_cast<Cls*>(obj_void);
 					MethodHolder* method_holder = static_cast<MethodHolder*>(method_holder_void);
 
-					// read arguments and call function
-					// get_stack_values may throw a DukTypeErrorException
-					try {
-						actually_call<RetType>(ctx, method_holder->method, obj, dukglue::detail::get_stack_values<Ts...>(ctx));
-						return std::is_void<RetType>::value ? 0 : 1;
-					}
-					catch (DukTypeErrorException&)
-					{
-						return DUK_RET_TYPE_ERROR;
-					}
+					// read arguments and call method
+					actually_call<RetType>(ctx, method_holder->method, obj, dukglue::detail::get_stack_values<Ts...>(ctx));
+					return std::is_void<RetType>::value ? 0 : 1;
 				}
 
 				// this mess is to support functions with void return values

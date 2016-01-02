@@ -24,25 +24,19 @@ namespace dukglue
 					return DUK_RET_TYPE_ERROR;
 				}
 
-				try {
-					// construct the new instance
-					std::tuple<Ts...> constructor_args = dukglue::detail::get_stack_values<Ts...>(ctx);
-					Cls* obj = apply_constructor<Cls, Ts...>(std::move(constructor_args));
+				// construct the new instance
+				std::tuple<Ts...> constructor_args = dukglue::detail::get_stack_values<Ts...>(ctx);
+				Cls* obj = apply_constructor<Cls, Ts...>(std::move(constructor_args));
 
-					duk_push_this(ctx);
+				duk_push_this(ctx);
 
-					// make the new script object keep the pointer to the new object instance
-					duk_push_pointer(ctx, obj);
-					duk_put_prop_string(ctx, -2, "\xFF" "obj_ptr");
+				// make the new script object keep the pointer to the new object instance
+				duk_push_pointer(ctx, obj);
+				duk_put_prop_string(ctx, -2, "\xFF" "obj_ptr");
 
-					duk_pop(ctx); // pop this
+				duk_pop(ctx); // pop this
 
-					return 0;
-				}
-				catch (DukTypeErrorException&)
-				{
-					return DUK_RET_TYPE_ERROR;
-				}
+				return 0;
 			}
 
 			static void push_prototype(duk_context* ctx)

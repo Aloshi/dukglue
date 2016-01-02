@@ -24,14 +24,8 @@ namespace dukglue
 				// this is not recommended due to the ugly syntax it requires.
 				static duk_ret_t call_native_function(duk_context* ctx)
 				{
-					// get_stack_values may throw a DukTypeErrorException
-					try {
-						actually_call<RetType>(ctx, dukglue::detail::get_stack_values<Ts...>(ctx));
-						return std::is_void<RetType>::value ? 0 : 1;
-					}
-					catch (DukTypeErrorException&) {
-						return DUK_RET_TYPE_ERROR;
-					}
+					actually_call<RetType>(ctx, dukglue::detail::get_stack_values<Ts...>(ctx));
+					return std::is_void<RetType>::value ? 0 : 1;
 				}
 
 				// this mess is to support functions with void return values
@@ -67,14 +61,8 @@ namespace dukglue
 
 					RetType(*funcToCall)(Ts...) = static_cast<RetType(*)(Ts...)>(fp_void);
 
-					// get_stack_values may throw a DukTypeErrorException
-					try {
-						actually_call<RetType>(ctx, funcToCall, dukglue::detail::get_stack_values<Ts...>(ctx));
-						return std::is_void<RetType>::value ? 0 : 1;
-					}
-					catch (DukTypeErrorException&) {
-						return DUK_RET_TYPE_ERROR;
-					}
+					actually_call<RetType>(ctx, funcToCall, dukglue::detail::get_stack_values<Ts...>(ctx));
+					return std::is_void<RetType>::value ? 0 : 1;
 				}
 
 				// this mess is to support functions with void return values
