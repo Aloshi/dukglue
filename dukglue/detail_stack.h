@@ -49,7 +49,7 @@ namespace dukglue
 
 			duk_get_prop_string(ctx, arg_idx, "\xFF" "type_info");
 			if (!duk_is_pointer(ctx, -1))  // missing type_info, must not be a native object
-				duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: expected native object", arg_idx);
+				duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: expected native object (missing type_info)", arg_idx);
 
 			// make sure this object can be safely returned as a T*
 			TypeInfo* info = static_cast<TypeInfo*>(duk_get_pointer(ctx, -1));

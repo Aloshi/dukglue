@@ -167,6 +167,24 @@ void pokeWithStick(Dog* dog)
 	dog->bark();
 }
 
+// many classes test
+
+class A {
+public:
+	void foo() {};
+};
+
+class B {
+public:
+	void foo() {}
+};
+
+class C {
+public:
+	void foo() {};
+};
+
+
 int main()
 {
 	ctx = duk_create_heap_default();
@@ -175,12 +193,23 @@ int main()
 	//dukglue_register_method<Shape>(ctx, &Shape::getNumber, "getNumber");
 	//dukglue_set_base_class<Shape, Circle>(ctx);
 
-	dukglue_register_function(ctx, deleteDog, "deleteDog");
-	// dukglue_register_function(ctx, pokeWithStick, "pokeWithStick");
+	//dukglue_register_function(ctx, deleteDog, "deleteDog");
+	/*dukglue_register_function(ctx, pokeWithStick, "pokeWithStick");
 
 	dukglue_register_constructor<Dog, const char*>(ctx, "Dog");
+
 	dukglue_register_method(ctx, &Dog::name, "name");
-	dukglue_register_method(ctx, &Dog::rename, "rename");
+	dukglue_register_method(ctx, &Dog::rename, "rename");*/
+
+	dukglue_register_constructor<A>(ctx, "A");
+	dukglue_register_constructor<B>(ctx, "B");
+	dukglue_register_constructor<C>(ctx, "C");
+
+	dukglue_register_method(ctx, &A::foo, "foo");
+	dukglue_register_method(ctx, &B::foo, "foo");
+	dukglue_register_method(ctx, &C::foo, "foo");
+
+	std::cout << "Stack size after all registrations (should be 0): " << duk_get_top(ctx) << std::endl;
 
 	//dukglue_register_constructor<TestClass>(ctx, "TestClass");
 	//dukglue_register_method(ctx, &TestClass::incCounter, "incCounter");
@@ -223,14 +252,7 @@ int main()
 	//if (duk_peval_string(ctx, "var test = new TestClass(); test.incCounter(1); test.printCounter();")) {
 	//if (duk_peval_string(ctx, "var test = getPuppy(); print(test.name()); test.rename('Archie'); print(getPuppy().name()); deletePuppy(); pokeWithStick(test);")) {
 	if (duk_peval_string(ctx,
-		"var gus = new Dog('Gus');"
-		"var archie = new Dog('Archie');"
-		"var sammie = new Dog('Sammie');"
-		"deleteDog(archie);"
-		"deleteDog(gus);"
-		"var lucky = new Dog('Lucky');"
-		"var tuxie = new Dog('Tuxie');"
-		"var squirt = new Dog('Squirt');"
+		"var a = new A(); var b = new B(); var c = new C();"
 		)) {
 		duk_get_prop_string(ctx, -1, "stack");
 		std::cout << duk_safe_to_string(ctx, -1) << std::endl;

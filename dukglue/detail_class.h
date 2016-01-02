@@ -44,12 +44,7 @@ namespace dukglue
 
 			static void push_prototype(duk_context* ctx)
 			{
-				// push (or create if it doesn't exist) the array
-				// that holds all of our prototypes
-				push_prototypes_array(ctx);
-
-				// has this class's prototype been accessed before?
-				if (s_heap_stash_idx_ == 0) {
+				if (!find_and_push_prototype(ctx)) {
 					// nope, need to create our prototype object
 					duk_push_object(ctx);
 
@@ -76,15 +71,9 @@ namespace dukglue
 					duk_set_finalizer(ctx, -2);
 					duk_put_prop_string(ctx, -2, "\xFF" "type_info_finalizer");
 
-					// register it in the stash and update our index
-					s_heap_stash_idx_ = duk_get_length(ctx, -2);
-					duk_put_prop_index(ctx, -2, s_heap_stash_idx_);
+					// register it in the stash
+					register_prototype(ctx, info);
 				}
-
-				duk_get_prop_index(ctx, -1, s_heap_stash_idx_);
-
-				// remove the prototype array from the stack
-				duk_remove(ctx, -2);
 			}
 
 			static void make_script_object(duk_context* ctx, Cls* obj)
@@ -99,9 +88,6 @@ namespace dukglue
 			}
 
 		private:
-			// TODO get rid of this and tie it to duk_context somehow
-			static duk_size_t s_heap_stash_idx_;
-
 			static duk_ret_t type_info_finalizer(duk_context* ctx)
 			{
 				duk_get_prop_string(ctx, 0, "\xFF" "type_info");
@@ -125,17 +111,8 @@ namespace dukglue
 
 				// does the prototype array already exist?
 				if (!duk_has_prop_string(ctx, -1, DUKGLUE_PROTOTYPES)) {
-					// nope, we need to create it by doing:
-					// heap_stash["dukglue_prototypes"] = [0];
-
+					// nope, we need to create it
 					duk_push_array(ctx);
-
-					// since s_heap_stash_idx_ is reserved to mean "not yet registered,"
-					// we need to make sure dukglue_prototypes[0] never gets used
-					// (dukglue_prototypes.length > 0). So: dukglue_prototypes[0] = null
-					duk_push_null(ctx);
-					duk_put_prop_index(ctx, -2, 0);
-
 					duk_put_prop_string(ctx, -2, DUKGLUE_PROTOTYPES);
 				}
 
@@ -144,10 +121,77 @@ namespace dukglue
 				// remove the heap stash from the stack
 				duk_remove(ctx, -2);
 			}
-		};
 
-		// initialize static members
-		template<class Cls>
-		duk_size_t ClassInfo<Cls>::s_heap_stash_idx_ = 0; // 0 means no prototype has been created
+			// Stack: ... [proto]  ->  ... [proto]
+			static void register_prototype(duk_context* ctx, const TypeInfo* info) {
+				// 1. We assume info is not in the prototype array already
+				// 2. Duktape has no efficient "shift array indices" operation (at least publicly)
+				// 3. This method doesn't need to be fast, it's only called during registration
+
+				// Work from high to low in the prototypes array, shifting as we go,
+				// until we find the spot for info.
+
+				push_prototypes_array(ctx);
+				duk_size_t i = duk_get_length(ctx, -1);
+				while (i > 0) {
+					duk_get_prop_index(ctx, -1, i - 1);
+
+					duk_get_prop_string(ctx, -1, "\xFF" "type_info");
+					const TypeInfo* chk_info = static_cast<TypeInfo*>(duk_require_pointer(ctx, -1));
+					duk_pop(ctx);  // pop type_info
+
+					if (*chk_info > *info) {
+						duk_put_prop_index(ctx, -2, i);
+						i--;
+					} else {
+						duk_pop(ctx);  // pop prototypes_array[i]
+						break;
+					}
+				}
+
+				std::cout << "Registering prototype for " << typeid(Cls).name() << " at " << i << std::endl;
+
+				duk_dup(ctx, -2);  // copy proto to top
+				duk_put_prop_index(ctx, -2, i);
+				duk_pop(ctx);  // pop prototypes_array
+			}
+
+			static bool find_and_push_prototype(duk_context* ctx) {
+				const TypeInfo search_info = TypeInfo(typeid(Cls));
+
+				push_prototypes_array(ctx);
+
+				// these are ints and not duk_size_t to deal with negative indices
+				int min = 0;
+				int max = duk_get_length(ctx, -1) - 1;
+
+				while (min <= max) {
+					int mid = (max - min) / 2 + min;
+
+					duk_get_prop_index(ctx, -1, mid);
+
+					duk_get_prop_string(ctx, -1, "\xFF" "type_info");
+					TypeInfo* mid_info = static_cast<TypeInfo*>(duk_require_pointer(ctx, -1));
+					duk_pop(ctx);  // pop type_info pointer
+
+					if (*mid_info == search_info) {
+						// found it
+						duk_remove(ctx, -2);  // pop prototypes_array
+						return true;
+					}
+					else if (*mid_info < search_info) {
+						min = mid + 1;
+					}
+					else {
+						max = mid - 1;
+					}
+
+					duk_pop(ctx);  // pop prototypes_array[mid]
+				}
+
+				duk_pop(ctx);  // pop prototypes_array
+				return false;
+			}
+		};
 	}
 }

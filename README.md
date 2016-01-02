@@ -284,12 +284,13 @@ TODO
 
 **This is not yet production-ready.**
 
-* Needs to be able to support multiple contexts in the same project - currently the ClassInfo struct keeps a static global, that needs to be moved somewhere to be per-context
-
 * const-qualified methods break to hell
 
 * const-qualified pointers *probably* break to hell
 
+* remove debug messages
+
+* try using an IF_UNLIKELY macro on read_value error checking functions
 
 http://aloshi.com
 

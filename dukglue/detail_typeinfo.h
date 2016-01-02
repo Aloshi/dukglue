@@ -26,6 +26,13 @@ namespace dukglue
 				return false;
 			}
 
+			inline bool operator<(const TypeInfo& rhs) const { return index_ < rhs.index_; }
+			inline bool operator<=(const TypeInfo& rhs) const { return index_ <= rhs.index_; }
+			inline bool operator>(const TypeInfo& rhs) const { return index_ > rhs.index_; }
+			inline bool operator>=(const TypeInfo& rhs) const { return index_ >= rhs.index_; }
+			inline bool operator==(const TypeInfo& rhs) const { return index_ == rhs.index_; }
+			inline bool operator!=(const TypeInfo& rhs) const { return index_ != rhs.index_; }
+
 		private:
 			std::type_index index_;
 			TypeInfo* base_;
