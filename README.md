@@ -147,7 +147,7 @@ void puppyRanAway(Dog* dog) {
   // (note: you'll need access to the Duktape context, e.g. as a global/singleton, for this to work)
 }
 
-dukglue_register_function(ctx, puppyRanAway);
+dukglue_register_function(ctx, puppyRanAway, "puppyRanAway");
 
 // --------------
 
@@ -202,19 +202,21 @@ What Dukglue **doesn't do:**
 
 * Dukglue does not support automatic garbage collection of C++ objects. Why?
 
-    * To support objects going back and forth between C++ and script, Dukglue keeps one canonical script object per native object (which is saved in the Duktape 'heap stash'). The downside to this is that Dukglue is always holding onto script object references, so they can't be garbage collected.
+    To support objects going back and forth between C++ and script, Dukglue keeps one canonical script object per native object (which is saved in the Duktape 'heap stash'). The downside to this is that Dukglue is always holding onto script object references, so they can't be garbage collected.
 
     If Dukglue *didn't* keep a registry of native object -> canonical script object, you could have two different script objects with the same underlying native object, but different dynamic properties. Equality operators like `obj1 == obj2` would also be unreliable, since they would technically be different objects.
 
-    (You could keep dynamic properties consistent by using a [Proxy object](http://wiki.duktape.org/HowtoVirtualProperties.html), but you still couldn't compare objects for equality with `==`.)
+    (You *could* keep dynamic properties consistent by using a [Proxy object](http://wiki.duktape.org/HowtoVirtualProperties.html), but you still couldn't compare objects for equality with `==`.)
 
     Basically, for this to be possible, Duktape needs support for weak references, so Dukglue can keep references without keeping them from being garbage collected.
 
-* Dukglue may not follow the "compact footprint" goal of Duktape. I picked Duktape for it's simple API, not to script my toaster. YMMV if you're trying to compile this for a microcontroller. Why?
+* Dukglue *might* not follow the "compact footprint" goal of Duktape. I picked Duktape for it's simple API, not to script my toaster. YMMV if you're trying to compile this for a microcontroller. Why?
 
     * Dukglue currently needs RTTI turned on. When Dukglue checks if an object can be cast to a particular type, it uses the typeid operator to compare if two types are equal. It's always used on compile-time types though, so you could implement it without RTTI if you needed to. I believe this is the only place RTTI is used (and a smart compiler should do it at compile-time).
 
     * An std::unordered_map is used to efficiently map object pointers to an internal Duktape array (see the `RefMap` class in `detail_refs.h`). This has some unnecessary memory overhead for every object (probably around 32 bytes per object). This could be improved to have no memory overhead - see detail_refs.h's comments for more information.
+
+    * That aside, run-time memory usage should be reasonable.
 
 * Dukglue may not be super fast. Duktape doesn't promise to be either.
 
@@ -273,6 +275,7 @@ int main()
 
   return 0;
 }
+```
 
 TODO
 ====
