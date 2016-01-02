@@ -131,30 +131,63 @@ public:
 	}
 };
 
+// Native to script object test
+
 class Dog
 {
 public:
+	Dog(const char* name) : mName(name) {}
+
+	const char* name() {
+		return mName.c_str();
+	}
+
+	void rename(const char* newName) {
+		mName = newName;
+	}
+
 	void bark() {
 		std::cout << "WOOF WOOF MOTHERFUCKER" << std::endl;
 	}
+	
+private:
+	std::string mName;
 };
 
-void printName(Shape* shape)
+duk_context* ctx = NULL;
+Dog* puppy = new Dog("Gus");
+
+Dog* getPuppy()
 {
-	std::cout << "Shape name: " << shape->getNumber() << std::endl;
+	return puppy;
+}
+
+void deletePuppy()
+{
+	dukglue_invalidate_object(ctx, puppy);
+	delete puppy;
+}
+
+void pokeWithStick(Dog* dog)
+{
+	dog->bark();
 }
 
 int main()
 {
-	duk_context* ctx = duk_create_heap_default();
+	ctx = duk_create_heap_default();
 
-	dukglue_register_constructor<Circle>(ctx, "Circle");
-	dukglue_register_method<Shape>(ctx, &Shape::getNumber, "getNumber");
-	dukglue_set_base_class<Shape, Circle>(ctx);
+	//dukglue_register_constructor<Circle>(ctx, "Circle");
+	//dukglue_register_method<Shape>(ctx, &Shape::getNumber, "getNumber");
+	//dukglue_set_base_class<Shape, Circle>(ctx);
 
-	dukglue_register_constructor<Dog>(ctx, "Dog");
+	// dukglue_register_constructor<Dog>(ctx, "Dog");
+	dukglue_register_function(ctx, getPuppy, "getPuppy");
+	dukglue_register_function(ctx, deletePuppy, "deletePuppy");
+	dukglue_register_function(ctx, pokeWithStick, "pokeWithStick");
 
-	dukglue_register_function(ctx, printName, "printName");
+	dukglue_register_method(ctx, &Dog::name, "name");
+	dukglue_register_method(ctx, &Dog::rename, "rename");
 
 	//dukglue_register_constructor<TestClass>(ctx, "TestClass");
 	//dukglue_register_method(ctx, &TestClass::incCounter, "incCounter");
@@ -195,7 +228,7 @@ int main()
 	*/
 
 	//if (duk_peval_string(ctx, "var test = new TestClass(); test.incCounter(1); test.printCounter();")) {
-	if (duk_peval_string(ctx, "var test = new Dog(); printName(test);")) {
+	if (duk_peval_string(ctx, "var test = getPuppy(); print(test.name()); test.rename('Archie'); print(getPuppy().name()); deletePuppy(); pokeWithStick(test);")) {
 		duk_get_prop_string(ctx, -1, "stack");
 		std::cout << duk_safe_to_string(ctx, -1) << std::endl;
 		duk_pop(ctx);

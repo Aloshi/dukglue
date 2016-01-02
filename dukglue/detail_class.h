@@ -6,6 +6,8 @@
 
 #include <map>
 
+#include <assert.h>
+
 namespace dukglue
 {
 	namespace detail
@@ -67,9 +69,9 @@ namespace dukglue
 					// will be run whenever the wrapper for an object of this class is
 					// destroyed; instead, we make a dummy object and put the finalizer
 					// on that.
-					// Warning if you're memory paranoid: this duplicates the type_info
-					// pointer. If you don't care about freeing memory during shutdown,
-					// you can probably comment out this part.
+					// If you're memory paranoid: this duplicates the type_info pointer
+					// once per registered class. If you don't care about freeing memory
+					// during shutdown, you can probably comment out this part.
 					duk_push_object(ctx);
 					duk_push_pointer(ctx, info);
 					duk_put_prop_string(ctx, -2, "\xFF" "type_info");
@@ -88,7 +90,19 @@ namespace dukglue
 				duk_remove(ctx, -2);
 			}
 
+			static void make_script_object(duk_context* ctx, Cls* obj)
+			{
+				duk_push_object(ctx);
+
+				duk_push_pointer(ctx, obj);
+				duk_put_prop_string(ctx, -2, "\xFF" "obj_ptr");
+
+				push_prototype(ctx);
+				duk_set_prototype(ctx, -2);
+			}
+
 		private:
+			// TODO get rid of this and tie it to duk_context somehow
 			static duk_size_t s_heap_stash_idx_;
 
 			static duk_ret_t type_info_finalizer(duk_context* ctx)

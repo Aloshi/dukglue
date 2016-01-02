@@ -86,9 +86,9 @@ namespace dukglue
 					// get this.obj_ptr
 					duk_push_this(ctx);
 					duk_get_prop_string(ctx, -1, "\xFF" "obj_ptr");
-					void* obj_void = duk_require_pointer(ctx, -1);
+					void* obj_void = duk_get_pointer(ctx, -1);
 					if (obj_void == nullptr) {
-						duk_error(ctx, DUK_RET_REFERENCE_ERROR, "Native object missing. Invalid reference?");
+						duk_error(ctx, DUK_RET_REFERENCE_ERROR, "Invalid native object for 'this'");
 						return DUK_RET_REFERENCE_ERROR;
 					}
 
@@ -99,7 +99,7 @@ namespace dukglue
 					duk_get_prop_string(ctx, -1, "\xFF" "method_holder");
 					void* method_holder_void = duk_require_pointer(ctx, -1);
 					if (method_holder_void == nullptr) {
-						duk_error(ctx, DUK_RET_TYPE_ERROR, "what even");
+						duk_error(ctx, DUK_RET_TYPE_ERROR, "Method pointer missing?!");
 						return DUK_RET_TYPE_ERROR;
 					}
 

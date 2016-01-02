@@ -92,3 +92,8 @@ void dukglue_register_method(duk_context* ctx, RetType(Cls::*method)(Ts...), con
 
 	duk_pop(ctx); // pop prototype
 }
+
+inline void dukglue_invalidate_object(duk_context* ctx, void* obj_ptr)
+{
+	dukglue::detail::RefManager::find_and_invalidate_native_object(ctx, obj_ptr);
+}

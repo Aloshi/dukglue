@@ -4,6 +4,7 @@
 #include <string>
 
 #include "detail_traits.h"
+#include "detail_refs.h"
 
 #include "duktape/duktape.h"
 
@@ -64,7 +65,7 @@ namespace dukglue
 
 			duk_get_prop_string(ctx, arg_idx, "\xFF" "obj_ptr");
 			if (!duk_is_pointer(ctx, -1))
-				duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: missing object pointer?!", arg_idx);
+				duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: invalid native object.", arg_idx);
 
 			T obj = static_cast<T>(duk_get_pointer(ctx, -1));
 
@@ -91,6 +92,19 @@ namespace dukglue
 		DUK_PUSH_VALUE_MACRO(const std::string&, duk_push_string, value.c_str());
 		DUK_PUSH_VALUE_MACRO(const char*, duk_push_string, value);
 		DUK_PUSH_VALUE_MACRO(bool, duk_push_boolean, value);
+
+		template<typename T>
+		void push_value<T*>(duk_context* ctx, T value)
+		{
+			using namespace dukglue::detail;
+			typedef std::remove_pointer<T>::type Cls;
+
+			if (!RefManager::find_and_push_native_object(ctx, value)) {
+				// need to create new script object
+				ClassInfo<Cls>::make_script_object(ctx, value);
+				RefManager::register_native_object(ctx, value);
+			}
+		}
 
 		// Call read_value for every Ts[i], for matching argument index Index[i].
 		// The traits::index_tuple is used for type inference.
