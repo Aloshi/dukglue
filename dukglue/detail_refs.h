@@ -24,8 +24,8 @@ namespace dukglue
 		//    Performance when returning native objects from functions when a lot
 		//    of native objects are registered will suffer.
 
-		// 2. Implement a self-balancing binary tree on top of a Duktape array
-		//    for the registry. Still fast - O(log(N)) - and no memory overhead.
+		// 2. Just keep the reference list sorted by pointer value.
+		//    Pointer -> script object lookup can be done in O(log(n)).
 
 		struct RefManager
 		{

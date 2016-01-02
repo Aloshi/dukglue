@@ -220,8 +220,10 @@ What Dukglue **doesn't do:**
 
 * Dukglue may not be super fast. Duktape doesn't promise to be either.
 
-Using Dukglue
-=============
+Getting Started
+===============
+
+Dukglue has currently only been tested with MSVC 2015. Your compiler must support at least C++11 to use Dukglue.
 
 Dukglue is a header-only library. For now, the easiest way to get started is to add the repository to your include path. Duktape is already included.
 
@@ -291,4 +293,4 @@ TODO
 
 http://aloshi.com
 
-- Alec 'Aloshi' Lofquist
+Alec 'Aloshi' Lofquist
