@@ -155,17 +155,11 @@ private:
 };
 
 duk_context* ctx = NULL;
-Dog* puppy = new Dog("Gus");
 
-Dog* getPuppy()
+void deleteDog(Dog* dog)
 {
-	return puppy;
-}
-
-void deletePuppy()
-{
-	dukglue_invalidate_object(ctx, puppy);
-	delete puppy;
+	dukglue_invalidate_object(ctx, dog);
+	delete dog;
 }
 
 void pokeWithStick(Dog* dog)
@@ -181,11 +175,10 @@ int main()
 	//dukglue_register_method<Shape>(ctx, &Shape::getNumber, "getNumber");
 	//dukglue_set_base_class<Shape, Circle>(ctx);
 
-	// dukglue_register_constructor<Dog>(ctx, "Dog");
-	dukglue_register_function(ctx, getPuppy, "getPuppy");
-	dukglue_register_function(ctx, deletePuppy, "deletePuppy");
-	dukglue_register_function(ctx, pokeWithStick, "pokeWithStick");
+	dukglue_register_function(ctx, deleteDog, "deleteDog");
+	// dukglue_register_function(ctx, pokeWithStick, "pokeWithStick");
 
+	dukglue_register_constructor<Dog, const char*>(ctx, "Dog");
 	dukglue_register_method(ctx, &Dog::name, "name");
 	dukglue_register_method(ctx, &Dog::rename, "rename");
 
@@ -228,7 +221,17 @@ int main()
 	*/
 
 	//if (duk_peval_string(ctx, "var test = new TestClass(); test.incCounter(1); test.printCounter();")) {
-	if (duk_peval_string(ctx, "var test = getPuppy(); print(test.name()); test.rename('Archie'); print(getPuppy().name()); deletePuppy(); pokeWithStick(test);")) {
+	//if (duk_peval_string(ctx, "var test = getPuppy(); print(test.name()); test.rename('Archie'); print(getPuppy().name()); deletePuppy(); pokeWithStick(test);")) {
+	if (duk_peval_string(ctx,
+		"var gus = new Dog('Gus');"
+		"var archie = new Dog('Archie');"
+		"var sammie = new Dog('Sammie');"
+		"deleteDog(archie);"
+		"deleteDog(gus);"
+		"var lucky = new Dog('Lucky');"
+		"var tuxie = new Dog('Tuxie');"
+		"var squirt = new Dog('Squirt');"
+		)) {
 		duk_get_prop_string(ctx, -1, "stack");
 		std::cout << duk_safe_to_string(ctx, -1) << std::endl;
 		duk_pop(ctx);

@@ -68,13 +68,29 @@ namespace dukglue
 
 				push_ref_array(ctx);
 
-				const duk_uarridx_t ref_idx = duk_get_length(ctx, -1);
-				ref_map->insert_or_assign(obj_ptr, ref_idx);
+				// find next free index
+				// free indices are kept in a linked list, starting at ref_array[0]
+				duk_get_prop_index(ctx, -1, 0);
+				duk_uarridx_t next_free_idx = duk_get_uint(ctx, -1);
+				duk_pop(ctx);
+
+				if (next_free_idx == 0) {
+					// no free spots in the array, make a new one at arr.length
+					next_free_idx = duk_get_length(ctx, -1);
+				} else {
+					// free spot found, need to remove it from the free list
+					// ref_array[0] = ref_array[next_free_idx]
+					duk_get_prop_index(ctx, -1, next_free_idx);
+					duk_put_prop_index(ctx, -2, 0);
+				}
+
+				std::cout << "putting reference at ref_array[" << next_free_idx << "]" << std::endl;
+				ref_map->insert_or_assign(obj_ptr, next_free_idx);
 
 				duk_dup(ctx, -2);  // put object on top
 
 				// ... [object] [ref_array] [object]
-				duk_put_prop_index(ctx, -2, ref_idx);
+				duk_put_prop_index(ctx, -2, next_free_idx);
 
 				duk_pop(ctx);  // pop ref_array
 			}
@@ -99,14 +115,23 @@ namespace dukglue
 				// invalidate internal pointer
 				duk_push_undefined(ctx);
 				duk_put_prop_string(ctx, -2, "\xFF" "obj_ptr");
+				duk_pop(ctx);  // pop object
 
-				// remove from references array (by setting to null)
-				duk_push_null(ctx);
+				// remove from references array and add the space it was in to free list
+				// (refs[0] -> tail) -> (refs[0] -> old_obj_idx -> tail)
+
+				// refs[old_obj_idx] = refs[0]
+				duk_get_prop_index(ctx, -1, 0);
 				duk_put_prop_index(ctx, -2, it->second);
 
-				duk_pop_2(ctx);  // pop ref_array and the old script object
+				// refs[0] = old_obj_idx
+				duk_push_uint(ctx, it->second);
+				duk_put_prop_index(ctx, -2, 0);
+
+				duk_pop(ctx);  // pop ref_array
 
 				// also remove from map
+				std::cout << "Freeing ref_array[" << it->second << "]" << std::endl;
 				ref_map->erase(it);
 			}
 
@@ -157,6 +182,11 @@ namespace dukglue
 
 				if (!duk_has_prop_string(ctx, -1, DUKGLUE_REF_ARRAY)) {
 					duk_push_array(ctx);
+
+					// ref_array[0] = 0 (initialize free list as empty)
+					duk_push_int(ctx, 0);
+					duk_put_prop_index(ctx, -2, 0);
+
 					duk_put_prop_string(ctx, -2, DUKGLUE_REF_ARRAY);
 				}
 

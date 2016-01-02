@@ -34,6 +34,9 @@ namespace dukglue
 				duk_push_pointer(ctx, obj);
 				duk_put_prop_string(ctx, -2, "\xFF" "obj_ptr");
 
+				// register it
+				dukglue::detail::RefManager::register_native_object(ctx, obj);
+
 				duk_pop(ctx); // pop this
 
 				return 0;
