@@ -53,11 +53,25 @@ void dukglue_set_base_class(duk_context* ctx)
 }
 
 // methods
-template<class Cls, typename T, T Value, typename RetType, typename... Ts>
-void dukglue_register_method_compiletime(duk_context* ctx, RetType(Cls::*func)(Ts...), const char* name)
+template<typename T, T Value, class Cls, typename RetType, typename... Ts>
+void dukglue_register_method_compiletime(duk_context* ctx, RetType(Cls::*method)(Ts...), const char* name)
+{
+	static_assert(std::is_same<T, RetType(Cls::*)(Ts...)>::value, "Mismatching method types.");
+	dukglue_register_method_compiletime<false, T, Value, Cls, RetType, Ts...>(ctx, name);
+}
+
+template<typename T, T Value, class Cls, typename RetType, typename... Ts>
+void dukglue_register_method_compiletime(duk_context* ctx, RetType(Cls::*method)(Ts...) const, const char* name)
+{
+	static_assert(std::is_same<T, RetType(Cls::*)(Ts...) const>::value, "Mismatching method types.");
+	dukglue_register_method_compiletime<true, T, Value, Cls, RetType, Ts...>(ctx, name);
+}
+
+template<bool isConst, typename T, T Value, class Cls, typename RetType, typename... Ts>
+void dukglue_register_method_compiletime(duk_context* ctx, const char* name)
 {
 	typedef dukglue::detail::ClassInfo<Cls> ClassInfo;
-	typedef dukglue::detail::MethodInfo<Cls, RetType, Ts...> MethodInfo;
+	typedef dukglue::detail::MethodInfo<isConst, Cls, RetType, Ts...> MethodInfo;
 
 	duk_c_function method_func = MethodInfo::MethodCompiletime<Value>::call_native_method;
 
@@ -72,19 +86,32 @@ void dukglue_register_method_compiletime(duk_context* ctx, RetType(Cls::*func)(T
 template<class Cls, typename RetType, typename... Ts>
 void dukglue_register_method(duk_context* ctx, RetType(Cls::*method)(Ts...), const char* name)
 {
+	dukglue_register_method<false, Cls, RetType, Ts...>(ctx, method, name);
+}
+
+template<class Cls, typename RetType, typename... Ts>
+void dukglue_register_method(duk_context* ctx, RetType(Cls::*method)(Ts...) const, const char* name)
+{
+	dukglue_register_method<true, Cls, RetType, Ts...>(ctx, method, name);
+}
+
+// I'm sorry this signature is so long, but I figured it was better than duplicating the method,
+// once for const methods and once for non-const methods.
+template<bool isConst, typename Cls, typename RetType, typename... Ts>
+void dukglue_register_method(duk_context* ctx, typename std::conditional<isConst, RetType(Cls::*)(Ts...) const, RetType(Cls::*)(Ts...)>::type method, const char* name) {
 	typedef dukglue::detail::ClassInfo<Cls> ClassInfo;
-	typedef dukglue::detail::MethodInfo<Cls, RetType, Ts...> MethodInfo;
+	typedef dukglue::detail::MethodInfo<isConst, Cls, RetType, Ts...> MethodInfo;
 
 	duk_c_function method_func = MethodInfo::MethodRuntime::call_native_method;
 
 	ClassInfo::push_prototype(ctx);
-	
+
 	duk_push_c_function(ctx, method_func, sizeof...(Ts));
 
-	duk_push_pointer(ctx, new MethodInfo::MethodHolder{method});
+	duk_push_pointer(ctx, new MethodInfo::MethodHolder{ method });
 	duk_put_prop_string(ctx, -2, "\xFF" "method_holder"); // consumes raw method pointer
 
-	// make sure we delete the method_holder when this function is removed
+	// make sure we free the method_holder when this function is removed
 	duk_push_c_function(ctx, MethodInfo::MethodRuntime::finalize_method, 1);
 	duk_set_finalizer(ctx, -2);
 

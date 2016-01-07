@@ -138,7 +138,7 @@ class Dog
 public:
 	Dog(const char* name) : mName(name) {}
 
-	const char* name() {
+	const char* name() const {
 		return mName.c_str();
 	}
 
@@ -154,60 +154,20 @@ private:
 	std::string mName;
 };
 
-duk_context* ctx = NULL;
-
-void deleteDog(Dog* dog)
-{
-	dukglue_invalidate_object(ctx, dog);
-	delete dog;
-}
-
-void pokeWithStick(Dog* dog)
-{
-	dog->bark();
-}
-
-// many classes test
-
-class A {
-public:
-	void foo() {};
-};
-
-class B {
-public:
-	void foo() {}
-};
-
-class C {
-public:
-	void foo() {};
-};
-
-
 int main()
 {
-	ctx = duk_create_heap_default();
+	duk_context* ctx = duk_create_heap_default();
 
 	//dukglue_register_constructor<Circle>(ctx, "Circle");
 	//dukglue_register_method<Shape>(ctx, &Shape::getNumber, "getNumber");
 	//dukglue_set_base_class<Shape, Circle>(ctx);
 
 	//dukglue_register_function(ctx, deleteDog, "deleteDog");
-	/*dukglue_register_function(ctx, pokeWithStick, "pokeWithStick");
+	//dukglue_register_function(ctx, pokeWithStick, "pokeWithStick");
 
 	dukglue_register_constructor<Dog, const char*>(ctx, "Dog");
-
 	dukglue_register_method(ctx, &Dog::name, "name");
-	dukglue_register_method(ctx, &Dog::rename, "rename");*/
-
-	dukglue_register_constructor<A>(ctx, "A");
-	dukglue_register_constructor<B>(ctx, "B");
-	dukglue_register_constructor<C>(ctx, "C");
-
-	dukglue_register_method(ctx, &A::foo, "foo");
-	dukglue_register_method(ctx, &B::foo, "foo");
-	dukglue_register_method(ctx, &C::foo, "foo");
+	dukglue_register_method(ctx, &Dog::rename, "rename");
 
 	std::cout << "Stack size after all registrations (should be 0): " << duk_get_top(ctx) << std::endl;
 
@@ -252,7 +212,7 @@ int main()
 	//if (duk_peval_string(ctx, "var test = new TestClass(); test.incCounter(1); test.printCounter();")) {
 	//if (duk_peval_string(ctx, "var test = getPuppy(); print(test.name()); test.rename('Archie'); print(getPuppy().name()); deletePuppy(); pokeWithStick(test);")) {
 	if (duk_peval_string(ctx,
-		"var a = new A(); var b = new B(); var c = new C();"
+		"var gus = new Dog('Gus'); print(gus.name());"
 		)) {
 		duk_get_prop_string(ctx, -1, "stack");
 		std::cout << duk_safe_to_string(ctx, -1) << std::endl;

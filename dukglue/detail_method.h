@@ -6,10 +6,10 @@ namespace dukglue
 {
 	namespace detail
 	{
-		template<class Cls, typename RetType, typename... Ts>
+		template<bool isConst, class Cls, typename RetType, typename... Ts>
 		struct MethodInfo
 		{
-			typedef RetType(Cls::*MethodType)(Ts...);
+			typedef typename std::conditional<isConst, RetType(Cls::*)(Ts...) const, RetType(Cls::*)(Ts...)>::type MethodType;
 
 			// The size of a method pointer is not guaranteed to be the same size as a function pointer.
 			// This means we can't just use duk_push_pointer(ctx, &MyClass::method) to store the method at run time.

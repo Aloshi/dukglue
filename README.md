@@ -284,13 +284,15 @@ TODO
 
 **This is not yet production-ready.**
 
-* const-qualified methods break to hell
-
-* const-qualified pointers *probably* break to hell
-
 * remove debug messages
 
 * try using an IF_UNLIKELY macro on read_value error checking functions
+
+* write some actual test cases with benchmarks
+
+* add `dukglue_register_deleter<Cls>(ctx)` convenience method
+
+* test with g++ and clang++
 
 http://aloshi.com
 
