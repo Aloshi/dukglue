@@ -183,8 +183,12 @@ public:
 		return 42.42f;
 	}
 
-	char* getString() const {
+	const char* getString() const {
 		return "dicks";
+	}
+
+	void printIt(const char* str) const {
+		std::cout << "printIt: " << str << std::endl;
 	}
 
 private:
@@ -216,6 +220,7 @@ int main()
 	//dukglue_register_method(ctx, &Player::getInt, "getInt");
 	//dukglue_register_method(ctx, &Player::getFloat, "getFloat");
 	dukglue_register_method(ctx, &Player::getString, "getString");
+	dukglue_register_method(ctx, &Player::printIt, "printIt");
 
 	std::cout << "Stack size after all registrations (should be 0): " << duk_get_top(ctx) << std::endl;
 	std::cout << "-----------------" << std::endl;
@@ -261,7 +266,7 @@ int main()
 	//if (duk_peval_string(ctx, "var test = new TestClass(); test.incCounter(1); test.printCounter();")) {
 	//if (duk_peval_string(ctx, "var test = getPuppy(); print(test.name()); test.rename('Archie'); print(getPuppy().name()); deletePuppy(); pokeWithStick(test);")) {
 	if (duk_peval_string(ctx,
-		"var pl = new Player(1); print(pl.getString());")) {
+		"var pl = new Player(1); print(pl.getString()); pl.printIt('dogfarts');")) {
 		duk_get_prop_string(ctx, -1, "stack");
 		std::cout << duk_safe_to_string(ctx, -1) << std::endl;
 		duk_pop(ctx);

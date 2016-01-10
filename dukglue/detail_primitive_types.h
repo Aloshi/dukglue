@@ -44,24 +44,26 @@ namespace dukglue {
 
 		DUKGLUE_SIMPLE_VALUE_TYPE(std::string, duk_is_string, duk_get_string, duk_push_string, value.c_str())
 
-		// char* is a bit tricky because its "bare type" should still be char*
+		// We have to do some magic for const char* to work correctly.
+		// We override the "bare type" and "storage type" to both be const char*.
+		// char* is a bit tricky because its "bare type" should still be const char*, to differentiate it from just char
 		template<>
 		struct Bare<char*> {
-			typedef char* type;
+			typedef const char* type;
 		};
 		template<>
 		struct Bare<const char*> {
-			typedef char* type;
+			typedef const char* type;
 		};
 
 		// the storage type should also be const char* - if we don't do this, it will end up as just "char"
 		template<>
-		struct ArgStorage<char*> {
+		struct ArgStorage<const char*> {
 			typedef const char* type;
 		};
 
 		template<>
-		struct DukType<char*> {
+		struct DukType<const char*> {
 			typedef std::true_type IsValueType;
 
 			template<typename FullT>
