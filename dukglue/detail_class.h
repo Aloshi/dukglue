@@ -25,7 +25,7 @@ namespace dukglue
 				}
 
 				// construct the new instance
-				std::tuple<Ts...> constructor_args = dukglue::detail::get_stack_values<Ts...>(ctx);
+				auto constructor_args = dukglue::detail::get_stack_values<Ts...>(ctx);
 				Cls* obj = apply_constructor<Cls, Ts...>(std::move(constructor_args));
 
 				duk_push_this(ctx);

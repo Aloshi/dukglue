@@ -33,7 +33,9 @@ namespace dukglue
 				inline static void actually_call(duk_context* ctx, std::tuple<Ts...>&& args)
 				{
 					RetType return_val = dukglue::detail::apply_fp(funcToCall, args);
-					dukglue::detail::push_value<RetType>(ctx, std::move(return_val));
+
+					using namespace dukglue::types;
+					DukType<typename Bare<RetType>::type>::push<RetType>(ctx, std::move(return_val));
 				}
 
 				template<>
@@ -70,7 +72,9 @@ namespace dukglue
 				inline static void actually_call(duk_context* ctx, RetType(*funcToCall)(Ts...), std::tuple<Ts...>&& args)
 				{
 					RetType return_val = dukglue::detail::apply_fp(funcToCall, args);
-					dukglue::detail::push_value<RetType>(ctx, std::move(return_val));
+
+					using namespace dukglue::types;
+					DukType<typename Bare<RetType>::type>::push<RetType>(ctx, std::move(return_val));
 				}
 
 				template<>

@@ -5,6 +5,8 @@
 
 #include "duktape/duktape.h"
 
+#include "example_vector3.h"
+
 void timeTest(const char* name, duk_context* ctx, const char* test_string)
 {
 	static const int NUM_TESTS = 100;
@@ -97,6 +99,7 @@ int main()
 }
 */
 
+/*
 class TestClass
 {
 public:
@@ -113,10 +116,11 @@ public:
 private:
 	int mCounter;
 };
-
+*/
 
 // Inheritance test
 
+/*
 class Shape
 {
 public:
@@ -130,9 +134,11 @@ public:
 		return 2;
 	}
 };
+*/
 
 // Native to script object test
 
+/*
 class Dog
 {
 public:
@@ -153,6 +159,38 @@ public:
 private:
 	std::string mName;
 };
+*/
+
+class Player {
+public:
+	Player(int id) : mID(id) {
+		std::cout << "Created player with ID " << id << std::endl;
+	}
+
+	Vector3f getPosition() {
+		return mPosition;
+	}
+
+	void setPosition(const Vector3f& position) {
+		mPosition = position;
+	}
+
+	int getInt() const {
+		return 42;
+	}
+
+	float getFloat() const {
+		return 42.42f;
+	}
+
+	char* getString() const {
+		return "dicks";
+	}
+
+private:
+	int mID;
+	Vector3f mPosition;
+};
 
 int main()
 {
@@ -165,11 +203,22 @@ int main()
 	//dukglue_register_function(ctx, deleteDog, "deleteDog");
 	//dukglue_register_function(ctx, pokeWithStick, "pokeWithStick");
 
-	dukglue_register_constructor<Dog, const char*>(ctx, "Dog");
-	dukglue_register_method(ctx, &Dog::name, "name");
-	dukglue_register_method(ctx, &Dog::rename, "rename");
+	//dukglue_register_constructor<Dog, const char*>(ctx, "Dog");
+	//dukglue_register_method(ctx, &Dog::name, "name");
+	//dukglue_register_method(ctx, &Dog::rename, "rename");
+	// dukglue_register_function(ctx, pokeWithStick, "pokeWithStick");
+
+	//dukglue_register_constructor<Player>(ctx, "Player");
+	//dukglue_register_method(ctx, &Player::setPosition, "setPosition");
+	//dukglue_register_method(ctx, &Player::getPosition, "getPosition");
+
+	dukglue_register_constructor<Player, int>(ctx, "Player");
+	//dukglue_register_method(ctx, &Player::getInt, "getInt");
+	//dukglue_register_method(ctx, &Player::getFloat, "getFloat");
+	dukglue_register_method(ctx, &Player::getString, "getString");
 
 	std::cout << "Stack size after all registrations (should be 0): " << duk_get_top(ctx) << std::endl;
+	std::cout << "-----------------" << std::endl;
 
 	//dukglue_register_constructor<TestClass>(ctx, "TestClass");
 	//dukglue_register_method(ctx, &TestClass::incCounter, "incCounter");
@@ -212,8 +261,7 @@ int main()
 	//if (duk_peval_string(ctx, "var test = new TestClass(); test.incCounter(1); test.printCounter();")) {
 	//if (duk_peval_string(ctx, "var test = getPuppy(); print(test.name()); test.rename('Archie'); print(getPuppy().name()); deletePuppy(); pokeWithStick(test);")) {
 	if (duk_peval_string(ctx,
-		"var gus = new Dog('Gus'); print(gus.name());"
-		)) {
+		"var pl = new Player(1); print(pl.getString());")) {
 		duk_get_prop_string(ctx, -1, "stack");
 		std::cout << duk_safe_to_string(ctx, -1) << std::endl;
 		duk_pop(ctx);

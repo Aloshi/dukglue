@@ -54,8 +54,6 @@ namespace dukglue
 				}
 			}
 
-			// TODO make this use a free list
-
 			// Takes a script object and adds it to the registry, associating
 			// it with obj_ptr. unregistered_object is not modified.
 			// If obj_ptr has already been registered with another object,
@@ -87,7 +85,7 @@ namespace dukglue
 					duk_put_prop_index(ctx, -2, 0);
 				}
 
-				std::cout << "putting reference at ref_array[" << next_free_idx << "]" << std::endl;
+				// std::cout << "putting reference at ref_array[" << next_free_idx << "]" << std::endl;
 				ref_map->insert_or_assign(obj_ptr, next_free_idx);
 
 				duk_dup(ctx, -2);  // put object on top
@@ -134,7 +132,7 @@ namespace dukglue
 				duk_pop(ctx);  // pop ref_array
 
 				// also remove from map
-				std::cout << "Freeing ref_array[" << it->second << "]" << std::endl;
+				// std::cout << "Freeing ref_array[" << it->second << "]" << std::endl;
 				ref_map->erase(it);
 			}
 
