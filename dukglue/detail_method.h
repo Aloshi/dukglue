@@ -40,22 +40,22 @@ namespace dukglue
 					Cls* obj = static_cast<Cls*>(obj_void);
 
 					// read arguments and call function
-					actually_call<RetType>(ctx, obj, dukglue::detail::get_stack_values<Ts...>(ctx));
+					actually_call(ctx, obj, dukglue::detail::get_stack_values<Ts...>(ctx));
 					return std::is_void<RetType>::value ? 0 : 1;
 				}
 
 				// this mess is to support functions with void return values
-				template<typename RetType2>
-				inline static void actually_call(duk_context* ctx, Cls* obj, std::tuple<Ts...>&& args)
+				template<typename Dummy = RetType>
+				static typename std::enable_if<!std::is_void<Dummy>::value>::type actually_call(duk_context* ctx, Cls* obj, std::tuple<Ts...>&& args)
 				{
 					RetType return_val = dukglue::detail::apply_method<Cls, RetType, Ts...>(methodToCall, obj, args);
 
 					using namespace dukglue::types;
-					DukType<typename Bare<RetType>::type>::push<RetType>(ctx, std::move(return_val));
+					DukType<typename Bare<RetType>::type>::template push<RetType>(ctx, std::move(return_val));
 				}
 
-				template<>
-				inline static void actually_call<void>(duk_context* ctx, Cls* obj, std::tuple<Ts...>&& args)
+				template<typename Dummy = RetType>
+				static typename std::enable_if<std::is_void<Dummy>::value>::type actually_call(duk_context* ctx, Cls* obj, std::tuple<Ts...>&& args)
 				{
 					dukglue::detail::apply_method(methodToCall, obj, args);
 				}
@@ -104,22 +104,22 @@ namespace dukglue
 					MethodHolder* method_holder = static_cast<MethodHolder*>(method_holder_void);
 
 					// read arguments and call method
-					actually_call<RetType>(ctx, method_holder->method, obj, dukglue::detail::get_stack_values<Ts...>(ctx));
+					actually_call(ctx, method_holder->method, obj, dukglue::detail::get_stack_values<Ts...>(ctx));
 					return std::is_void<RetType>::value ? 0 : 1;
 				}
 
 				// this mess is to support functions with void return values
-				template<typename RetType2>
-				inline static void actually_call(duk_context* ctx, MethodType method, Cls* obj, std::tuple<Ts...>&& args)
+				template<typename Dummy = RetType>
+				static typename std::enable_if<!std::is_void<Dummy>::value>::type actually_call(duk_context* ctx, MethodType method, Cls* obj, std::tuple<Ts...>&& args)
 				{
 					RetType return_val = dukglue::detail::apply_method<Cls, RetType, Ts...>(method, obj, args);
 
 					using namespace dukglue::types;
-					DukType<typename Bare<RetType>::type>::push<RetType>(ctx, std::move(return_val));
+					DukType<typename Bare<RetType>::type>::template push<RetType>(ctx, std::move(return_val));
 				}
 
-				template<>
-				inline static void actually_call<void>(duk_context* ctx, MethodType method, Cls* obj, std::tuple<Ts...>&& args)
+				template<typename Dummy = RetType>
+				static typename std::enable_if<std::is_void<Dummy>::value>::type actually_call(duk_context* ctx, MethodType method, Cls* obj, std::tuple<Ts...>&& args)
 				{
 					dukglue::detail::apply_method(method, obj, args);
 				}

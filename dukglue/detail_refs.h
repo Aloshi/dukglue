@@ -86,7 +86,7 @@ namespace dukglue
 				}
 
 				// std::cout << "putting reference at ref_array[" << next_free_idx << "]" << std::endl;
-				ref_map->insert_or_assign(obj_ptr, next_free_idx);
+				(*ref_map)[obj_ptr] = next_free_idx;
 
 				duk_dup(ctx, -2);  // put object on top
 

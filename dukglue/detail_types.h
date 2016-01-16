@@ -4,6 +4,7 @@
 
 #include "detail_refs.h"
 #include "detail_typeinfo.h"
+#include "detail_class_proto.h"
 
 // TODO try adding a using namespace std in here if I can scope it to just this file
 
@@ -107,7 +108,7 @@ namespace dukglue {
 
 				if (!RefManager::find_and_push_native_object(ctx, &value)) {
 					// need to create new script object
-					ClassInfo<T>::make_script_object(ctx, &value);
+					ProtoManager::make_script_object<T>(ctx, &value);
 					RefManager::register_native_object(ctx, &value);
 				}
 			}
@@ -138,8 +139,8 @@ namespace dukglue {
 		struct ArgStorage {
 		private:
 			typedef typename Bare<T>::type BareType;
-			typedef typename DukType<BareType> DukType;
-			typedef typename DukType::IsValueType IsValueType;
+			//typedef DukType<BareType> ThisDukType;
+			typedef typename DukType<BareType>::IsValueType IsValueType;
 		
 			static_assert(!IsValueType::value || !std::is_pointer<T>::value, "Cannot return pointer to value type.");
 			static_assert(!IsValueType::value ||

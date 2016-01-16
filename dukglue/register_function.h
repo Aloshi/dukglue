@@ -13,7 +13,7 @@ void dukglue_register_function_compiletime(duk_context* ctx, RetType(*)(Ts...), 
 		"Mismatching function pointer template parameter and function pointer argument types. "
 		"Try: dukglue_register_function<decltype(func), func>(ctx, \"funcName\", func)");
 
-	duk_c_function evalFunc = dukglue::detail::FuncInfoHolder<RetType, Ts...>::FuncActual<Value>::call_native_function;
+	duk_c_function evalFunc = dukglue::detail::FuncInfoHolder<RetType, Ts...>::template FuncActual<Value>::call_native_function;
 
 	duk_push_c_function(ctx, evalFunc, sizeof...(Ts));
 	duk_put_global_string(ctx, name);

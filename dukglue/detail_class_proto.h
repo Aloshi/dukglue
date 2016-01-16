@@ -1,50 +1,17 @@
 #pragma once
 
-#include "detail_stack.h"
-#include "detail_traits.h"
 #include "detail_typeinfo.h"
 
-#include <map>
+namespace dukglue {
+  namespace detail {
 
-#include <assert.h>
-
-namespace dukglue
-{
-	namespace detail
-	{
-		template<class Cls>
-		struct ClassInfo
+		struct ProtoManager
 		{
-		public:
-			template<typename... Ts>
-			static duk_ret_t call_native_constructor(duk_context* ctx)
-			{
-				if (!duk_is_constructor_call(ctx)) {
-					duk_error(ctx, DUK_RET_TYPE_ERROR, "Constructor must be called with new T().");
-					return DUK_RET_TYPE_ERROR;
-				}
-
-				// construct the new instance
-				auto constructor_args = dukglue::detail::get_stack_values<Ts...>(ctx);
-				Cls* obj = apply_constructor<Cls, Ts...>(std::move(constructor_args));
-
-				duk_push_this(ctx);
-
-				// make the new script object keep the pointer to the new object instance
-				duk_push_pointer(ctx, obj);
-				duk_put_prop_string(ctx, -2, "\xFF" "obj_ptr");
-
-				// register it
-				dukglue::detail::RefManager::register_native_object(ctx, obj);
-
-				duk_pop(ctx); // pop this
-
-				return 0;
-			}
-
+    public:
+      template<typename Cls>
 			static void push_prototype(duk_context* ctx)
 			{
-				if (!find_and_push_prototype(ctx)) {
+				if (!find_and_push_prototype<Cls>(ctx)) {
 					// nope, need to create our prototype object
 					duk_push_object(ctx);
 
@@ -76,6 +43,7 @@ namespace dukglue
 				}
 			}
 
+      template<typename Cls>
 			static void make_script_object(duk_context* ctx, Cls* obj)
 			{
 				duk_push_object(ctx);
@@ -83,7 +51,7 @@ namespace dukglue
 				duk_push_pointer(ctx, obj);
 				duk_put_prop_string(ctx, -2, "\xFF" "obj_ptr");
 
-				push_prototype(ctx);
+				push_prototype<Cls>(ctx);
 				duk_set_prototype(ctx, -2);
 			}
 
@@ -149,13 +117,14 @@ namespace dukglue
 					}
 				}
 
-				std::cout << "Registering prototype for " << typeid(Cls).name() << " at " << i << std::endl;
+				//std::cout << "Registering prototype for " << typeid(Cls).name() << " at " << i << std::endl;
 
 				duk_dup(ctx, -2);  // copy proto to top
 				duk_put_prop_index(ctx, -2, i);
 				duk_pop(ctx);  // pop prototypes_array
 			}
 
+      template<typename Cls>
 			static bool find_and_push_prototype(duk_context* ctx) {
 				const TypeInfo search_info = TypeInfo(typeid(Cls));
 
@@ -192,6 +161,7 @@ namespace dukglue
 				duk_pop(ctx);  // pop prototypes_array
 				return false;
 			}
-		};
-	}
+      
+    };
+  }
 }

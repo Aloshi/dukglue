@@ -28,7 +28,7 @@ namespace dukglue
 		typename ArgsTuple<Args...>::type get_stack_values_helper(duk_context* ctx, dukglue::detail::index_tuple<Indexes...>)
 		{
 			using namespace dukglue::types;
-			return std::forward_as_tuple(DukType<typename Bare<Args>::type>::read<typename ArgStorage<Args>::type>(ctx, Indexes)...);
+			return std::forward_as_tuple(DukType<typename Bare<Args>::type>::template read<typename ArgStorage<Args>::type>(ctx, Indexes)...);
 		}
 
 		// Returns an std::tuple of the values asked for in the template parameters.
