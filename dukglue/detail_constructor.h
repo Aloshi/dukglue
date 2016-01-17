@@ -32,5 +32,23 @@ namespace dukglue {
       return 0;
     }
 
+	template<typename Cls>
+	static duk_ret_t call_native_deleter(duk_context* ctx)
+	{
+		duk_push_this(ctx);
+		duk_get_prop_string(ctx, -1, "\xFF" "obj_ptr");
+
+		if (!duk_is_pointer(ctx, -1)) {
+			duk_error(ctx, DUK_RET_REFERENCE_ERROR, "Object has already been invalidated; cannot delete.");
+			return DUK_RET_REFERENCE_ERROR;
+		}
+
+		Cls* obj = static_cast<Cls*>(duk_require_pointer(ctx, -1));
+		dukglue_invalidate_object(ctx, obj);
+		delete obj;
+
+		duk_pop_2(ctx);
+		return 0;
+	}
   }
 }

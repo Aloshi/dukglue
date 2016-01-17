@@ -13,7 +13,7 @@ void dukglue_register_constructor(duk_context* ctx, const char* name)
 	duk_push_c_function(ctx, constructor_func, sizeof...(Ts));
 
 	// set constructor_func.prototype
-  dukglue::detail::ProtoManager::push_prototype<Cls>(ctx);
+	dukglue::detail::ProtoManager::push_prototype<Cls>(ctx);
 	duk_put_prop_string(ctx, -2, "prototype");
 
 	// set name = constructor_func
@@ -95,8 +95,9 @@ void dukglue_register_method(duk_context* ctx, RetType(Cls::*method)(Ts...) cons
 // I'm sorry this signature is so long, but I figured it was better than duplicating the method,
 // once for const methods and once for non-const methods.
 template<bool isConst, typename Cls, typename RetType, typename... Ts>
-void dukglue_register_method(duk_context* ctx, typename std::conditional<isConst, RetType(Cls::*)(Ts...) const, RetType(Cls::*)(Ts...)>::type method, const char* name) {
-  using namespace dukglue::detail;
+void dukglue_register_method(duk_context* ctx, typename std::conditional<isConst, RetType(Cls::*)(Ts...) const, RetType(Cls::*)(Ts...)>::type method, const char* name)
+{
+	using namespace dukglue::detail;
 	typedef MethodInfo<isConst, Cls, RetType, Ts...> MethodInfo;
 
 	duk_c_function method_func = MethodInfo::MethodRuntime::call_native_method;
@@ -120,4 +121,15 @@ void dukglue_register_method(duk_context* ctx, typename std::conditional<isConst
 inline void dukglue_invalidate_object(duk_context* ctx, void* obj_ptr)
 {
 	dukglue::detail::RefManager::find_and_invalidate_native_object(ctx, obj_ptr);
+}
+
+// register a deleter
+template<typename Cls>
+void dukglue_register_delete(duk_context* ctx)
+{
+	duk_c_function delete_func = dukglue::detail::call_native_deleter<Cls>;
+
+	dukglue::detail::ProtoManager::push_prototype<Cls>(ctx);
+	duk_push_c_function(ctx, delete_func, 0);
+	duk_put_prop_string(ctx, -2, "delete");
 }
