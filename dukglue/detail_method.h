@@ -48,6 +48,10 @@ namespace dukglue
 				template<typename Dummy = RetType>
 				static typename std::enable_if<!std::is_void<Dummy>::value>::type actually_call(duk_context* ctx, Cls* obj, std::tuple<Ts...>&& args)
 				{
+					// ArgStorage has some static_asserts in it that validate value types,
+					// so we typedef it to force ArgStorage<RetType> to compile and run the asserts
+					typedef typename dukglue::types::ArgStorage<RetType>::type ValidateReturnType;
+
 					RetType return_val = dukglue::detail::apply_method<Cls, RetType, Ts...>(methodToCall, obj, args);
 
 					using namespace dukglue::types;
@@ -112,6 +116,10 @@ namespace dukglue
 				template<typename Dummy = RetType>
 				static typename std::enable_if<!std::is_void<Dummy>::value>::type actually_call(duk_context* ctx, MethodType method, Cls* obj, std::tuple<Ts...>&& args)
 				{
+					// ArgStorage has some static_asserts in it that validate value types,
+					// so we typedef it to force ArgStorage<RetType> to compile and run the asserts
+					typedef typename dukglue::types::ArgStorage<RetType>::type ValidateReturnType;
+
 					RetType return_val = dukglue::detail::apply_method<Cls, RetType, Ts...>(method, obj, args);
 
 					using namespace dukglue::types;

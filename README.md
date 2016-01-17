@@ -223,7 +223,7 @@ What Dukglue **doesn't do:**
 Getting Started
 ===============
 
-Dukglue has currently only been tested with MSVC 2015. Your compiler must support at least C++11 to use Dukglue.
+Dukglue has been tested with MSVC 2015 and sorta tested with clang++-3.6. Your compiler must support at least C++11 to use Dukglue.
 
 Dukglue is a header-only library. For now, the easiest way to get started is to add the repository to your include path. Duktape is already included.
 
@@ -286,13 +286,11 @@ TODO
 
 * remove debug messages
 
-* try using an IF_UNLIKELY macro on read_value error checking functions
+* write some actual test cases
 
-* write some actual test cases with benchmarks
+* add a CMake package finder for Dukglue
 
-* add `dukglue_register_deleter<Cls>(ctx)` convenience method
-
-* test with g++ and clang++
+* work out a way to let users install Duktape separately from Dukglue? at any rate, users currently need to compile dukglue/duktape/duktape.c which is not obvious
 
 http://aloshi.com
 

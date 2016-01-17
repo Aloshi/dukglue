@@ -91,12 +91,13 @@ namespace dukglue {
 			}
 
 			// read value
-			template<typename FullT, typename = typename std::enable_if< std::is_same<T, typename std::remove_const<FullT>::type >::value>::type >
+			// commented out because it breaks for abstract classes
+			/*template<typename FullT, typename = typename std::enable_if< std::is_same<T, typename std::remove_const<FullT>::type >::value>::type >
 			static T read(duk_context* ctx, duk_idx_t arg_idx) {
 				static_assert(std::is_copy_constructible<T>::value, "Reading a value requires a copy-constructable type");
 				const T& obj = read<T&>(ctx, arg_idx);
 				return T(obj);
-			}
+			}*/
 
 			// -----------------------------------------------------
 			// Writing
@@ -123,11 +124,12 @@ namespace dukglue {
 			}
 
 			// Value (create new instance on the heap)
-			template<typename FullT, typename = typename std::enable_if< std::is_same<T, typename std::remove_const<FullT>::type >::value>::type >
+			// commented out because this is an easy way to accidentally cause a memory leak
+			/*template<typename FullT, typename = typename std::enable_if< std::is_same<T, typename std::remove_const<FullT>::type >::value>::type >
 			static void push(duk_context* ctx, T value) {
 				static_assert(std::is_copy_constructible<T>::value, "Cannot push value for non-copy-constructable type.");
 				return push<T*>(ctx, new T(value));
-			}
+			}*/
 		};
 
 		// Figure out what the type for an argument should be inside the tuple.

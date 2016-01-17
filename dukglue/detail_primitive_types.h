@@ -26,6 +26,8 @@ namespace dukglue {
 			} \
 		};
 
+		DUKGLUE_SIMPLE_VALUE_TYPE(bool, duk_is_boolean, 0 != duk_get_boolean, duk_push_boolean, value)
+
 		DUKGLUE_SIMPLE_VALUE_TYPE(uint8_t,  duk_is_number, duk_get_uint, duk_push_uint, value)
 		DUKGLUE_SIMPLE_VALUE_TYPE(uint16_t, duk_is_number, duk_get_uint, duk_push_uint, value)
 		DUKGLUE_SIMPLE_VALUE_TYPE(uint32_t, duk_is_number, duk_get_uint, duk_push_uint, value)

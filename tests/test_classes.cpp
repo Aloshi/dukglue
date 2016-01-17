@@ -75,8 +75,10 @@ void test_classes() {
 
 	// - test type-safety when passing native types
 	dukglue_register_constructor<Goat>(ctx, "Goat");
+	dukglue_register_delete<Goat>(ctx);
 	test_eval(ctx, "var goat = new Goat();");
 	test_eval_expect_error(ctx, "pokeWithStick(goat);");
+	test_eval(ctx, "goat.delete()");
 
 	// - test that objects can be passed from C++ to script correctly
 	dukglue_register_function(ctx, visitPuppy, "visitPuppy");
@@ -100,6 +102,7 @@ void test_classes() {
 	test_eval_expect_error(ctx, "myPuppy.bark();");
 	test_eval_expect_error(ctx, "pokeWithStick(myPuppy);");
 	test_eval_expect_error(ctx, "myPuppy.delete();");
+	test_eval(ctx, "test.delete()");
 
 	duk_destroy_heap(ctx);
 

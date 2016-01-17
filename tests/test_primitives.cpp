@@ -82,12 +82,11 @@ void test_primitives() {
 	dukglue_register_function(ctx, get_const_ref_cpp_string, "get_const_ref_cpp_string");
 	test_eval_expect(ctx, "get_const_ref_cpp_string()", "potato_const_ref");
 
-	// SHIT this shouldn't compile why does it aargargh
-	dukglue_register_function(ctx, get_ref_cpp_string, "get_ref_cpp_string");
-	test_eval_expect(ctx, "get_ref_cpp_string()", "potato_ref");
+	// this shouldn't compile and give a sane error message ("Value types can only be returned as const references.")
+	//dukglue_register_function(ctx, get_ref_cpp_string, "get_ref_cpp_string");
 
-	// this DEFINITELY shouldn't compile and give a sane error message
-	dukglue_register_function(ctx, get_ptr_cpp_string, "get_ptr_cpp_string");
+	// this shouldn't compile and give a sane error message ("Cannot return pointer to value type.")
+	//dukglue_register_function(ctx, get_ptr_cpp_string, "get_ptr_cpp_string");
 
 	duk_destroy_heap(ctx);
 
