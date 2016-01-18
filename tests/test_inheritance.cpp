@@ -1,5 +1,5 @@
-#include "../dukglue/dukglue.h"
 #include "test_assert.h"
+#include <dukglue.h>
 
 #include <iostream>
 #include <sstream>

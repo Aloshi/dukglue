@@ -67,7 +67,8 @@ namespace dukglue
 
 					duk_pop_2(ctx);
 
-					RetType(*funcToCall)(Ts...) = static_cast<RetType(*)(Ts...)>(fp_void);
+          static_assert(sizeof(RetType(*)(Ts...)) == sizeof(void*), "Function pointer and data pointer are different sizes");
+					RetType(*funcToCall)(Ts...) = reinterpret_cast<RetType(*)(Ts...)>(fp_void);
 
 					actually_call(ctx, funcToCall, dukglue::detail::get_stack_values<Ts...>(ctx));
 					return std::is_void<RetType>::value ? 0 : 1;

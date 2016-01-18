@@ -223,14 +223,77 @@ What Dukglue **doesn't do:**
 Getting Started
 ===============
 
-Dukglue has been tested with MSVC 2015 and sorta tested with clang++-3.6. Your compiler must support at least C++11 to use Dukglue.
+Dukglue has been tested with MSVC 2015, clang++-3.6, and g++-4.8. Your compiler must support at least C++11 to use Dukglue.
 
-Dukglue is a header-only library. For now, the easiest way to get started is to add the repository to your include path. Duktape is already included.
+Dukglue is a header-only library. Dukglue requires Duktape to be installed such that `#include <duktape.h>` works.
+
+
+I've created some CMake 3.x files to try and make installing Dukglue and Duktape as painless as possible.
+
+First, install Duktape:
+
+```bash
+cd duktape
+mkdir build
+cd build
+cmake ..
+sudo make install
+```
+
+This will compile Duktape as a shared library (.so), and install it to `/usr/local/lib/libduktape.so` by default. The Duktape headers will be installed as `/usr/local/include/duktape.h` and `/usr/local/include/duk_config.h`.
+
+
+Then, install Dukglue:
+
+```bash
+cd dukglue
+mkdir build
+cd build
+cmake ..
+sudo make install
+```
+
+This will copy the Dukglue headers to `/usr/local/include/dukglue/*` by default.
+
+
+Now, all you need to do is add the include paths for Dukglue and Duktape to your project, and link with Duktape.
+
+If you're writing a Makefile by hand, that will be something like:
+
+```bash
+gcc -c mysource.cpp -I/usr/local/include -I/usr/local/include/dukglue
+gcc mysource.o -o myprogram -lduktape
+```
+
+If your project is using CMake, feel free to use the FindDukglue.cmake and FindDuktape.cmake in `cmake_modules`.
+
+```cmake
+cmake_minimum_required(VERSION 3.1.0)
+
+project(MyAwesomeProject)
+
+find_package(Duktape REQUIRED)
+find_package(Dukglue REQUIRED)
+
+add_executable(MyAwesomeProject
+  main.cpp
+  #...
+)
+
+include_directories(${DUKTAPE_INCLUDE_DIR})
+include_directories(${DUKGLUE_INCLUDE_DIR})
+target_link_libraries(MyAwesomeProject ${DUKTAPE_LIBRARY})
+
+# Enable C++11 mode for your compiler, if you don't do this you will get crazy errors
+target_compile_features(MyAwesomeProject PRIVATE cxx_variadic_templates cxx_auto_type)
+```
+
+Then you can try the example below:
 
 ```cpp
 #include <iostream>
 
-#include <dukglue/dukglue.h>
+#include <dukglue.h>
 
 int myFunc(int a)
 {
@@ -282,15 +345,11 @@ int main()
 TODO
 ====
 
-**This is not yet production-ready.**
+* improve FindDukglue.cmake to automatically include FindDuktape.cmake
 
-* remove debug messages
+* write a C++ wrapper for duk_context that has member functions that forward to the dukglue_* functions
 
-* write some actual test cases
-
-* add a CMake package finder for Dukglue
-
-* work out a way to let users install Duktape separately from Dukglue? at any rate, users currently need to compile dukglue/duktape/duktape.c which is not obvious
+* write a tutorial on how to add custom value types
 
 http://aloshi.com
 

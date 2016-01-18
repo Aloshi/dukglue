@@ -110,7 +110,7 @@ namespace dukglue
 		}
 
 		template<class Cls, typename... Args>
-		Cls* apply_constructor(const std::tuple<Args...>&& tup)
+		Cls* apply_constructor(const std::tuple<Args...>& tup)
 		{
 			return apply_constructor_helper<Cls>(typename make_indexes<Args...>::type(), std::tuple<Args...>(tup));
 		}

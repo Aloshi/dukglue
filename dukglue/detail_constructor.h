@@ -16,7 +16,7 @@ namespace dukglue {
 
       // construct the new instance
       auto constructor_args = dukglue::detail::get_stack_values<Ts...>(ctx);
-      Cls* obj = apply_constructor<Cls, Ts...>(std::move(constructor_args));
+      Cls* obj = dukglue::detail::apply_constructor<Cls>(std::move(constructor_args));
 
       duk_push_this(ctx);
 
