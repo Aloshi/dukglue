@@ -41,7 +41,7 @@ namespace dukglue
 
 					// read arguments and call function
 					actually_call(ctx, obj, dukglue::detail::get_stack_values<Ts...>(ctx));
-					return std::is_void<RetType>::value ? 0 : 1;
+					return std::is_same<void,RetType>::value ? 0 : 1;
 				}
 
 				// this mess is to support functions with void return values
@@ -109,7 +109,7 @@ namespace dukglue
 
 					// read arguments and call method
 					actually_call(ctx, method_holder->method, obj, dukglue::detail::get_stack_values<Ts...>(ctx));
-					return std::is_void<RetType>::value ? 0 : 1;
+					return std::is_same<void,RetType>::value ? 0 : 1;
 				}
 
 				// this mess is to support functions with void return values
