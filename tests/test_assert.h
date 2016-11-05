@@ -1,6 +1,6 @@
 #pragma once
 
-#include <duktape.h>
+#include "duktape.h"
 
 void test_eval(duk_context* ctx, const char* code);
 

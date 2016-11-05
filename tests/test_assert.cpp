@@ -1,6 +1,6 @@
 #include "test_assert.h"
 
-#include <duktape.h>
+#include "duktape.h"
 
 #include <iostream>
 #include <assert.h>

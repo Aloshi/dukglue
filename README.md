@@ -198,6 +198,57 @@ shape.describe();  // prints "A lazily-drawn circle at 1, 2, with a radius of ab
 
   (multiple inheritance is not supported)
 
+* Dukglue supports Duktape properties (getter/setter pairs that act like values):
+
+```cpp
+class MyClass {
+public:
+  MyClass() : mValue(0) {}
+
+  int getValue() const {
+    return mValue;
+  }
+  void setValue(int v) {
+    mValue = v;
+  }
+
+private:
+  int mValue;
+};
+
+dukglue_register_constructor<MyClass>(ctx, "MyClass");
+dukglue_register_property(ctx, &MyClass::getValue, &MyClass::setValue, "value");
+
+// --------------
+
+// Script:
+var test = MyClass();
+test.value;  // calls MyClass::getValue(), which returns 0
+test.value = 42;  // calls MyClass::setValue(42)
+test.value;  // again calls MyClass::getValue(), which now 42
+```
+
+  (also works with non-`const` getter methods)
+
+* You can also do getter-only or setter-only properties:
+
+```cpp
+// continuing with the class above...
+
+dukglue_register_property(ctx, &MyClass::getValue, nullptr, "value");
+
+var test = MyClass();
+test.value;  // still 0
+test.value = 42;  // throws an error
+
+dukglue_register_property(ctx, nullptr, &MyClass::setValue, "value");
+test.value = 42;  // works
+test.value;  // throws an error
+```
+
+  (it is also safe to re-define properties like in this example)
+
+
 What Dukglue **doesn't do:**
 
 * Dukglue does not support automatic garbage collection of C++ objects. Why?
@@ -227,62 +278,39 @@ Dukglue has been tested with MSVC 2015, clang++-3.6, and g++-4.8. Your compiler 
 
 Dukglue is a header-only library. Dukglue requires Duktape to be installed such that `#include <duktape.h>` works.
 
+Everything you need is in the `dukglue` directory of this repository. If you prefer not to mess with CMake or build settings, you should be able to just copy the `dukglue` directory into your project.
 
-I've created some CMake 3.x files to try and make installing Dukglue and Duktape as painless as possible.
-
-First, install Duktape:
+I've also created some CMake files to try and make installing Dukglue as painless as possible:
 
 ```bash
-cd duktape
 mkdir build
 cd build
 cmake ..
 sudo make install
 ```
 
-This will compile Duktape as a shared library (.so), and install it to `/usr/local/lib/libduktape.so` by default. The Duktape headers will be installed as `/usr/local/include/duktape.h` and `/usr/local/include/duk_config.h`.
+This will copy the Dukglue headers to `/usr/local/include/dukglue/*` by default. You can use `cmake .. -DCMAKE_INSTALL_PREFIX:PATH=.` to change the install directory to something else (will install to `CMAKE_INSTALL_PREFIX/include/dukglue/*`).
 
+Now, all you need to do is add the include paths for Dukglue to your project and add duktape.c/duktape.h to your project.
 
-Then, install Dukglue:
-
-```bash
-cd dukglue
-mkdir build
-cd build
-cmake ..
-sudo make install
-```
-
-This will copy the Dukglue headers to `/usr/local/include/dukglue/*` by default.
-
-
-Now, all you need to do is add the include paths for Dukglue and Duktape to your project, and link with Duktape.
-
-If you're writing a Makefile by hand, that will be something like:
-
-```bash
-gcc -c mysource.cpp -I/usr/local/include -I/usr/local/include/dukglue
-gcc mysource.o -o myprogram -lduktape
-```
-
-If your project is using CMake, feel free to use the FindDukglue.cmake and FindDuktape.cmake in `cmake_modules`.
+If your project is using CMake, feel free to use the FindDukglue.cmake in `cmake_modules`. It assumes you will include Duktape directly in your project. You can use it like this:
 
 ```cmake
 cmake_minimum_required(VERSION 3.1.0)
 
 project(MyAwesomeProject)
 
-find_package(Duktape REQUIRED)
 find_package(Dukglue REQUIRED)
 
 add_executable(MyAwesomeProject
   main.cpp
-  #...
+  # ... your files ...
+  duktape.c
+  duktape.h
+  duk_config.h
 )
 
-include_directories(${DUKTAPE_INCLUDE_DIR})
 include_directories(${DUKGLUE_INCLUDE_DIR})
-target_link_libraries(MyAwesomeProject ${DUKTAPE_LIBRARY})
 
 # Enable C++11 mode for your compiler, if you don't do this you will get crazy errors
 target_compile_features(MyAwesomeProject PRIVATE cxx_variadic_templates cxx_auto_type)
@@ -293,7 +321,7 @@ Then you can try the example below:
 ```cpp
 #include <iostream>
 
-#include <dukglue.h>
+#include <dukglue/dukglue.h>
 
 int myFunc(int a)
 {
@@ -345,7 +373,7 @@ int main()
 TODO
 ====
 
-* improve FindDukglue.cmake to automatically include FindDuktape.cmake
+* Add helpers for calling script functions and handling the values that come out
 
 * write a C++ wrapper for duk_context that has member functions that forward to the dukglue_* functions
 

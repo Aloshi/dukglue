@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 2.7)
 
 project(dukglue)
 
@@ -18,7 +18,7 @@ install(FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/detail_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/register_class.h
   ${CMAKE_CURRENT_SOURCE_DIR}/register_function.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/register_property.h
 
   DESTINATION include/dukglue
 )
-

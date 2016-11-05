@@ -5,6 +5,7 @@ void test_classes();
 void test_primitives();
 void test_inheritance();
 void test_multiple_contexts();
+void test_properties();
 
 int main() {
 	test_framework();
@@ -12,6 +13,7 @@ int main() {
 	test_classes();
 	test_inheritance();
 	test_multiple_contexts();
+	test_properties();
 
 	std::cout << "All tests passed!" << std::endl;
 
