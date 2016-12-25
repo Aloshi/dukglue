@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.1.0)
+project(dukglue)
 
-add_subdirectory(dukglue)
+add_subdirectory(include)
 add_subdirectory(tests)
 
 if(WIN32)

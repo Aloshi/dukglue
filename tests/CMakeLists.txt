@@ -1,5 +1,3 @@
-project(dukglue_test)
-
 cmake_minimum_required(VERSION 3.1.0)
 
 add_executable(dukglue_test
@@ -17,6 +15,6 @@ add_executable(dukglue_test
 )
 
 # this is stupid
-target_include_directories(dukglue_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../dukglue .)
+target_include_directories(dukglue_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include .)
 
 target_compile_features(dukglue_test PRIVATE cxx_variadic_templates cxx_auto_type)
