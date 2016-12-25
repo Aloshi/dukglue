@@ -20,6 +20,34 @@ void dukglue_register_constructor(duk_context* ctx, const char* name)
 	duk_put_global_string(ctx, name);
 }
 
+/*
+extern "C" duk_ret_t dummy_constructor(duk_context *ctx);
+
+template<class Cls, typename... Ts>
+void dukglue_register_prototype(duk_context* ctx, const char* name)
+{
+	duk_push_c_function(ctx, dummy_constructor, 0);
+	dukglue::detail::ProtoManager::push_prototype<Cls>(ctx);
+	duk_put_prop_string(ctx, -2, "prototype");
+	duk_put_global_string(ctx, name);
+}
+*/
+
+template<class Cls>
+void dukglue_put_local_native_object(duk_context* ctx, Cls *object)
+{
+    dukglue::detail::ProtoManager::push_prototype<Cls>(ctx);
+    duk_push_pointer(ctx, object);
+    duk_put_prop_string(ctx, -2, "\xFF" "obj_ptr");
+}
+
+template<class Cls>
+void dukglue_put_global_native_object(duk_context* ctx, Cls *object, const char* name)
+{
+    dukglue_put_local_native_object(ctx,object);
+    duk_put_global_string(ctx, name);
+}
+
 template<class Base, class Derived>
 void dukglue_set_base_class(duk_context* ctx)
 {

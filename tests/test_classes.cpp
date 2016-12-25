@@ -2,6 +2,7 @@
 #include <dukglue.h>
 
 #include <iostream>
+#include <vector>
 
 class Dog {
 public:
@@ -49,6 +50,97 @@ void pokeWithStick(Dog* dog) {
 Dog* visitPuppy() {
 	static Dog* puppy = new Dog("Sammie");
 	return puppy;
+}
+
+//----------------------------------
+class Animal
+{
+public:
+	Animal(const std::string &name){ this->name = name; }
+	virtual ~Animal(){}
+
+protected:
+	std::string name;
+};
+
+class Pig : public Animal
+{
+public:
+	Pig(std::string name) : Animal(name) {}
+	virtual ~Pig() {}
+
+	std::string sayOink(){ return std::string("Oink!"); }
+};
+
+class Cow : public Animal
+{
+public:
+	Cow(std::string name) : Animal(name) {}
+	virtual ~Cow() {}
+
+	std::string sayMoo(){ return std::string("Mooo!"); }
+};
+
+class Sheep : public Animal
+{
+public:
+	Sheep(std::string name) : Animal(name) {}
+	virtual ~Sheep() {}
+
+	std::string sayBee(){ return std::string("Beee!"); }
+	std::string sayName(){ return name; }
+};
+
+class AnimalFarm
+{
+public:
+	AnimalFarm(duk_context *ctx){ context = ctx; }
+	virtual ~AnimalFarm(){ for(auto a : animals) delete a; }
+public:
+// using dirty hack in detail_method.h
+	const void getAnimal(int type, const std::string &name);
+	const void getLotsOfAnimals(int type, int number);	
+private:
+	duk_context *context;
+	std::vector<Animal*> animals;
+};
+
+const void AnimalFarm::getAnimal(int type, const std::string &name)
+{
+	switch(type){
+		case 0: {
+			Pig* piggy = new Pig(name);
+			animals.push_back(piggy);
+			dukglue_put_local_native_object<Pig>(context,piggy);
+			dukglue_register_method(context, &Pig::sayOink, "sayOink");
+		} break;
+		case 1: {
+			Cow* cow = new Cow(name);
+			animals.push_back(cow);
+			dukglue_put_local_native_object<Cow>(context,cow);
+			dukglue_register_method(context, &Cow::sayMoo, "sayMoo");
+		} break;
+		default: {
+			Sheep* sheep = new Sheep(name);
+			animals.push_back(sheep);
+			dukglue_put_local_native_object<Sheep>(context,sheep);
+			dukglue_register_method(context, &Sheep::sayBee, "sayBee");
+			dukglue_register_method(context, &Sheep::sayName, "sayName");
+		} break;
+	}
+}
+
+const void AnimalFarm::getLotsOfAnimals(int type, int number)
+{
+	static const char *types[] = { "Piggy #", "Cow #", "Sheep #" };
+
+	duk_idx_t arr_idx;
+	arr_idx = duk_push_array(context);
+	for(int i=0;i<number;i++){
+		std::string name(types[type] + std::to_string(i));
+ 		getAnimal(type,name);
+		duk_put_prop_index(context, arr_idx, i);
+	}
 }
 
 void test_classes() {
@@ -104,6 +196,20 @@ void test_classes() {
 	test_eval_expect_error(ctx, "myPuppy.delete();");
 	test_eval(ctx, "test.delete()");
 
+	// - test of native objects
+	AnimalFarm *farm = new AnimalFarm(ctx);
+	dukglue_put_global_native_object<AnimalFarm>(ctx,farm,"TheFarm");
+	dukglue_register_method(ctx, &AnimalFarm::getAnimal,"getAnimal");
+	dukglue_register_method(ctx, &AnimalFarm::getLotsOfAnimals,"getLotsOfAnimals");
+	test_eval(ctx, "var piggy = TheFarm.getAnimal(0,'Peppa');");
+	test_eval_expect(ctx, "piggy.sayOink();","Oink!");
+	test_eval(ctx, "var sheep = TheFarm.getAnimal(2,'Cotton');");
+	test_eval_expect(ctx, "sheep.sayBee();","Beee!");
+	test_eval_expect(ctx, "sheep.sayName();","Cotton");
+	test_eval(ctx, "var sheeps = []; sheeps = TheFarm.getLotsOfAnimals(2, 3);");
+	test_eval_expect(ctx, "sheeps[1].sayBee();","Beee!");
+	test_eval_expect(ctx, "sheeps[1].sayName();","Sheep #2");
+	delete farm;
 	duk_destroy_heap(ctx);
 
 	std::cout << "Classes tested OK" << std::endl;
