@@ -249,3 +249,54 @@ typename std::enable_if<!std::is_void<RetT>::value, RetT>::type dukglue_pcall(du
 	duk_pop(ctx);  // remove result from stack
 	return std::move(result);
 }
+
+
+// peval
+namespace dukglue {
+namespace detail {
+
+template <typename RetT>
+duk_ret_t eval_safe(duk_context* ctx)
+{
+	const char* str = (const char*) duk_require_pointer(ctx, -2);
+	RetT* out = (RetT*) duk_require_pointer(ctx, -1);
+	duk_pop_2(ctx);
+
+	duk_eval_string(ctx, str);
+	dukglue_read(ctx, -1, out);
+	return 1;
+}
+
+}
+}
+
+template <typename RetT>
+typename std::enable_if<std::is_void<RetT>::value, RetT>::type dukglue_peval(duk_context* ctx, const char* str)
+{
+	int rc = duk_peval_string(ctx, str);
+	if (rc != 0)
+		throw DukErrorException(ctx, rc);
+
+	duk_pop(ctx);
+}
+
+template <typename RetT>
+typename std::enable_if<!std::is_void<RetT>::value, RetT>::type dukglue_peval(duk_context* ctx, const char* str)
+{
+	RetT ret;
+	duk_push_pointer(ctx, (void*)str);
+	duk_push_pointer(ctx, (void*)&ret);
+	int rc = duk_safe_call(ctx, &dukglue::detail::eval_safe<RetT>, 2, 1);
+	if (rc != 0)
+		throw DukErrorException(ctx, rc);
+	duk_pop(ctx);
+	return ret;
+}
+
+// register a global object (very simple helper, but very common for "Hello World"-ish applications)
+template <typename T>
+inline void dukglue_register_global(duk_context* ctx, const T& obj, const char* name)
+{
+	dukglue_push(ctx, obj);
+	duk_put_global_string(ctx, name);
+}

@@ -36,6 +36,8 @@ void test_eval_expect_error(duk_context* ctx, const char* code) {
 		std::cerr << "Expected error running '" << code << "', but ran fine" << std::endl;
 		test_assert(false);
 	}
+
+	duk_pop(ctx);  // ignore Error object
 }
 
 void test_assert(bool value) {

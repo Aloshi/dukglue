@@ -3,6 +3,13 @@
 
 #include <iostream>
 
+class NativeObject {
+public:
+	double multiply(double a, double b) {
+		return a*b;
+	}
+};
+
 void test_dukvalue()
 {
 	duk_context* ctx = duk_create_heap_default();
@@ -183,6 +190,99 @@ void test_dukvalue()
 		test_assert(testObj1_copy == testObj1);
 		test_assert(testObj1_copy == testObj1_again);
 		test_assert(testObj1_copy != testObj2);
+	}
+
+	// test pcall_method with native object
+	{
+		NativeObject* obj = new NativeObject();
+		dukglue_register_global(ctx, obj, "obj");
+		
+		dukglue_register_method(ctx, &NativeObject::multiply, "multiplyNative");
+
+		// create a method named testMethod on native object obj
+		test_eval(ctx, "obj.testMethod = function(a, b) { this.lastA = a; this.lastB = b; return a*b; }");
+		duk_pop(ctx);  // pop the undefined
+
+		// call it, check the result
+		{
+			int result = dukglue_pcall_method<int>(ctx, obj, "testMethod", 4, 3);
+			test_assert(result == 4 * 3);
+		}
+
+		{
+			// call it, ignore the result (still has side effects)
+			dukglue_pcall_method<void>(ctx, obj, "testMethod", 1, 2);
+
+			// verify side effects went through (also checks that argument order is right)
+			test_eval(ctx, "obj.lastA;");
+			test_eval(ctx, "obj.lastB;");
+			int lastA = duk_require_int(ctx, -2);
+			int lastB = duk_require_int(ctx, -1);
+			duk_pop_2(ctx);
+			test_assert(lastA == 1);
+			test_assert(lastB == 2);
+		}
+
+		// if we push the native object again, is the method still there?
+		{
+			// call method manually
+			dukglue_push(ctx, obj);
+			duk_get_prop_string(ctx, -1, "testMethod");
+			duk_swap_top(ctx, -2);
+			duk_push_int(ctx, 3);
+			duk_push_int(ctx, 3);
+			duk_pcall_method(ctx, 2);
+			int stillWorks = duk_require_int(ctx, -1);
+			duk_pop(ctx);
+			test_assert(stillWorks == 3 * 3);
+		}
+
+		// test pcall_method with no arguments
+		{
+			dukglue_peval<void>(ctx, "obj.noArgsMethod = function() { return 42; }");
+			
+			int res = dukglue_pcall_method<int>(ctx, obj, "noArgsMethod");
+			test_assert(res == 42);
+
+			// test discarding result
+			dukglue_pcall_method<void>(ctx, obj, "noArgsMethod");
+		}
+
+		// can we get a reference to the native object's script object as a DukValue?
+		DukValue variantObj = dukglue_peval<DukValue>(ctx, "obj;");
+
+		// DukValue ref works?
+		{
+			int res = dukglue_pcall_method<int>(ctx, variantObj, "testMethod", 4, 7);
+			test_assert(res == 4 * 7);
+		}
+
+		dukglue_invalidate_object(ctx, obj);
+		delete obj;
+		obj = NULL;
+
+		// make sure it invalidated correctly
+		test_eval_expect_error(ctx, "obj.multiplyNative(4, 3);");
+
+		// same for DukValue
+		{
+			try {
+				int res = dukglue_pcall_method<int>(ctx, variantObj, "multiplyNative", 4, 3);
+				test_assert(false);
+			} catch (DukException&) {
+				// ok
+			}
+		}
+	}
+
+	// test dukglue_peval with bad return result type
+	{
+		try {
+			int test = dukglue_peval<int>(ctx, "'definitely not a number';");
+			test_assert(false);
+		} catch (DukException&) {
+			// ok
+		}
 	}
 
 	test_assert(duk_get_top(ctx) == 0);
