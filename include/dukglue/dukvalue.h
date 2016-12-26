@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <string>
 
-#include <assert.h>  // TODO decide error handling (exceptions?)
+#include "dukexception.h"
 
 // A variant class for Duktape values.
 // This class is not really dependant on the rest of dukglue, but the rest of dukglue is integrated to support it.
@@ -35,9 +35,9 @@ public:
 		NUMBER = DUK_TYPE_NUMBER,
 		STRING = DUK_TYPE_STRING,
 		OBJECT = DUK_TYPE_OBJECT,
-		//BUFFER = DUK_TYPE_BUFFER,
+		BUFFER = DUK_TYPE_BUFFER,  // not implemented
 		POINTER = DUK_TYPE_POINTER,
-		//LIGHTFUNC = DUK_TYPE_LIGHTFUNC
+		LIGHTFUNC = DUK_TYPE_LIGHTFUNC  // not implemented
 	};
 
 	// default constructor just makes an undefined-type DukValue
@@ -126,9 +126,10 @@ public:
 		case POINTER:
 			return mPOD.pointer == rhs.mPOD.pointer;
 
+		case BUFFER:
+		case LIGHTFUNC:
 		default:
-			assert(false);
-			return false;
+			throw DukException() << "operator== not implemented (" << type_name() << ")";
 		}
 	}
 
@@ -137,14 +138,10 @@ public:
 	}
 
 	// copies the object at idx on the stack into a new DukValue and returns it
-	static DukValue copy_from_stack(duk_context* ctx, duk_idx_t idx = -1, duk_uint_t accept_mask = ~0x0) {
-		if (!duk_check_type_mask(ctx, idx, accept_mask)) {
-			assert(false);
-		}
-
+	static DukValue copy_from_stack(duk_context* ctx, duk_idx_t idx = -1) {
 		DukValue value;
 		value.mContext = ctx;
-		value.mType = duk_get_type(ctx, idx);
+		value.mType = (Type) duk_get_type(ctx, idx);
 		switch (value.mType) {
 		case UNDEFINED:
 			break;
@@ -176,14 +173,19 @@ public:
 		case POINTER:
 			value.mPOD.pointer = duk_require_pointer(ctx, idx);
 			break;
+
+		case BUFFER:
+		case LIGHTFUNC:
+		default:
+			throw DukException() << "Cannot turn type into DukValue (" << value.type_name() << ")";
 		}
 
 		return std::move(value);
 	}
 
 	// same as above (copy_from_stack), but also removes the value we copied from the stack
-	static DukValue take_from_stack(duk_context* ctx, duk_idx_t idx = -1, duk_uint_t accept_mask = ~0x0) {
-		DukValue val = copy_from_stack(ctx, idx, accept_mask);
+	static DukValue take_from_stack(duk_context* ctx, duk_idx_t idx = -1) {
+		DukValue val = copy_from_stack(ctx, idx);
 		duk_remove(ctx, idx);
 		return std::move(val);
 	}
@@ -221,54 +223,75 @@ public:
 		case POINTER:
 			duk_push_pointer(ctx, mPOD.pointer);
 			break;
+
+		case BUFFER:
+		case LIGHTFUNC:
+		default:
+			throw DukException() << "DukValue.push() not implemented for type (" << type_name() << ")";
 		}
 	}
 
 	// various (type-safe) getters
 	inline double as_double() const {
 		if (mType != NUMBER)
-			assert(false);
+			throw DukException() << "Expected number, got " << type_name();
 		return mPOD.number;
 	}
 
 	inline float as_float() const {
 		if (mType != NUMBER)
-			assert(false);
+			throw DukException() << "Expected number, got " << type_name();
 		return static_cast<float>(mPOD.number);
 	}
 
 	inline duk_int_t as_int() const {
 		if (mType != NUMBER)
-			assert(false);
+			throw DukException() << "Expected number, got " << type_name();
 		return static_cast<uint32_t>(mPOD.number);
 	}
 
 	inline duk_uint_t as_uint() const {
 		if (mType != NUMBER)
-			assert(false);
+			throw DukException() << "Expected number, got " << type_name();
 		return static_cast<uint32_t>(mPOD.number);
 	}
 
 	inline void* as_pointer() const {
 		if (mType != POINTER && mType != NULLREF)
-			assert(false);
+			throw DukException() << "Expected pointer or null, got " << type_name();
 		return mPOD.pointer;
 	}
 
 	inline const std::string& as_string() const {
 		if (mType != STRING)
-			assert(false);
+			throw DukException() << "Expected string, got " << type_name();
 		return mString;
 	}
 
 	inline const char* as_c_string() const {
 		if (mType != STRING)
-			assert(false);
+			throw DukException() << "Expected string, got " << type_name();
 		return mString.data();
 	}
 
 	inline Type type() const {
-		return (Type) mType;
+		return mType;
+	}
+
+	// same as duk_get_type_name(), but that's internal to Duktape, so we shouldn't use it
+	inline const char* type_name() const {
+		switch (mType) {
+		case UNDEFINED: return "undefined";
+		case NULLREF: return "null";
+		case BOOLEAN: return "boolean";
+		case NUMBER: return "number";
+		case STRING: return "string";
+		case OBJECT: return "object";
+		case BUFFER: return "buffer";
+		case POINTER: return "pointer";
+		case LIGHTFUNC: return "lightfunc";
+		}
+		return "?";
 	}
 
 	inline duk_context* context() const {
@@ -380,7 +403,7 @@ private:
 	}
 
 	duk_context* mContext;
-	duk_int_t mType;  // our type - one of the standard Duktape DUK_TYPE_* values
+	Type mType;  // our type - one of the standard Duktape DUK_TYPE_* values
 
 	// This holds the plain-old-data types. Since this is a variant,
 	// we hold only one value at a time, so this is a union to save
@@ -388,7 +411,7 @@ private:
 	union ValueTypes {
 		bool boolean;
 		double number;
-		void* pointer;
+		void* pointer;  // if mType == NULLREF, this is 0 (otherwise holds pointer value when mType == POINTER)
 		duk_uarridx_t ref_array_idx;
 	} mPOD;
 

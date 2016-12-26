@@ -91,13 +91,27 @@ namespace dukglue {
 
 			template <typename FullT>
 			static DukValue read(duk_context* ctx, duk_idx_t arg_idx) {
-				return DukValue::copy_from_stack(ctx, arg_idx);
+				try {
+					return DukValue::copy_from_stack(ctx, arg_idx);
+				} catch (DukException& e) {
+					// only DukException can be thrown by DukValue::copy_from_stack
+					duk_error(ctx, DUK_ERR_ERROR, e.what());
+				}
 			}
 
 			template <typename FullT>
 			static void push(duk_context* ctx, const DukValue& value) {
-				assert(value.context() == ctx);
-				value.push();
+				if (value.context() != ctx) {
+					duk_error(ctx, DUK_ERR_ERROR, "DukValue comes from a different context");
+					return;
+				}
+
+				try {
+					value.push();
+				} catch (DukException& e) {
+					// only DukException can be thrown by DukValue::copy_from_stack
+					duk_error(ctx, DUK_ERR_ERROR, e.what());
+				}
 			}
 		};
 

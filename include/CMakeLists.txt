@@ -17,6 +17,7 @@ set(DUKGLUE_HEADERS
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/detail_typeinfo.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/detail_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/dukvalue.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/dukexception.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/register_class.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/register_function.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/register_property.h

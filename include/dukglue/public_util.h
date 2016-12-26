@@ -1,10 +1,19 @@
 #pragma once
 
+#include "dukexception.h"
+#include "detail_traits.h"  // for index_tuple/make_indexes
+
+#include <assert.h>  // TODO remove this
+
 // This file has some useful utility functions for users.
 // Hopefully this saves you from wading through the implementation.
 
 /**
  * @brief      Push a value onto the duktape stack.
+ *
+ * WARNING: THIS IS NOT "PROTECTED." If an error occurs when pushing (unlikely, but possible),
+ *          the Duktape fatal error handler will be invoked (and the program will probably terminate).
+ *
  * @param      ctx    duktape context
  * @param[in]  val    value to push
  */
@@ -19,7 +28,7 @@ void dukglue_push(duk_context* ctx, const FullT& val) {
 }
 
 template <typename T, typename... ArgTs>
-void dukglue_push(duk_context* ctx, T arg, ArgTs... args)
+void dukglue_push(duk_context* ctx, const T& arg, ArgTs... args)
 {
 	dukglue_push(ctx, arg);
 	dukglue_push(ctx, args...);
@@ -30,6 +39,12 @@ inline void dukglue_push(duk_context* ctx)
 	// no-op
 }
 
+
+/**
+ * WARNING: THIS IS NOT "PROTECTED." If an error occurs while reading (which is possible if you didn't
+ *          explicitly check the type), the fatal Duktape error handler will be invoked, and the program
+ *          will probably abort.
+ */
 template <typename RetT>
 void dukglue_read(duk_context* ctx, duk_idx_t arg_idx, RetT* out)
 {
@@ -41,66 +56,196 @@ void dukglue_read(duk_context* ctx, duk_idx_t arg_idx, RetT* out)
 	*out = DukType<typename Bare<RetT>::type>::template read<RetT>(ctx, arg_idx);
 }
 
-// TODO add pcall/pcall_method
 
-template <typename RetT, typename ObjT, typename... ArgTs>
-typename std::enable_if<std::is_void<RetT>::value, RetT>::type dukglue_call_method(duk_context* ctx, const ObjT& obj, const char* method_name, ArgTs... args)
+// methods
+
+// leaves return value on stack
+template <typename ObjT, typename... ArgTs>
+void dukglue_call_method(duk_context* ctx, const ObjT& obj, const char* method_name, ArgTs... args)
 {
 	dukglue_push(ctx, obj);
 	duk_get_prop_string(ctx, -1, method_name);
 
-	if (duk_check_type(ctx, -1, DUK_TYPE_UNDEFINED))
-		assert(false);  // method does not exist
+	if (duk_check_type(ctx, -1, DUK_TYPE_UNDEFINED)) {
+		duk_error(ctx, DUK_ERR_REFERENCE_ERROR, "Method does not exist", method_name);
+		return;
+	}
+
+	if (!duk_is_callable(ctx, -1)) {
+		duk_error(ctx, DUK_ERR_TYPE_ERROR, "Property is not callable");
+		return;
+	}
 
 	duk_swap_top(ctx, -2);
 	dukglue_push(ctx, args...);
 	duk_call_method(ctx, sizeof...(args));
-	duk_pop(ctx);
+}
+
+namespace dukglue {
+namespace detail {
+
+template <typename ObjT, typename... ArgTs, size_t... Indexes>
+void call_method_safe_helper(duk_context* ctx, const ObjT& obj, const char* method_name, std::tuple<ArgTs...>&& tup, index_tuple<Indexes...> indexes)
+{
+	dukglue_call_method(ctx, obj, method_name, std::forward<ArgTs>(std::get<Indexes>(tup))...);
 }
 
 template <typename RetT, typename ObjT, typename... ArgTs>
-typename std::enable_if<!std::is_void<RetT>::value, RetT>::type dukglue_call_method(duk_context* ctx, const ObjT& obj, const char* method_name, ArgTs... args)
+typename std::enable_if<std::is_void<RetT>::value, duk_idx_t>::type call_method_safe(duk_context* ctx)
 {
-	dukglue_push(ctx, obj);
-	duk_get_prop_string(ctx, -1, method_name);
+	ObjT* obj = (ObjT*)duk_require_pointer(ctx, -3);
+	const char* method_name = (const char*)duk_require_pointer(ctx, -2);
+	typedef std::tuple<ArgTs...> TupleT;
+	TupleT* tuple = (TupleT*)duk_require_pointer(ctx, -1);
+	duk_pop_3(ctx);
 
-	if (duk_check_type(ctx, -1, DUK_TYPE_UNDEFINED))
-		assert(false);  // method does not exist
-
-	duk_swap_top(ctx, -2);
-	dukglue_push(ctx, args...);
-	duk_call_method(ctx, sizeof...(args));
-
-	RetT ret;
-	dukglue_read(ctx, -1, &ret);
-	duk_pop(ctx);
-	return ret;
+	call_method_safe_helper(ctx, *obj, method_name, std::tuple<ArgTs...>(*tuple), typename make_indexes<ArgTs...>::type());
+	return 1;
 }
 
 template <typename RetT, typename ObjT, typename... ArgTs>
-typename std::enable_if<std::is_void<RetT>::value, RetT>::type dukglue_call(duk_context* ctx, const ObjT& obj, ArgTs... args)
+typename std::enable_if<!std::is_void<RetT>::value, duk_idx_t>::type call_method_safe(duk_context* ctx)
 {
-	dukglue_push(ctx, obj);
-	if (!duk_is_callable(ctx, -1))
-		assert(false);  // obj is not callable
+	ObjT* obj = (ObjT*)duk_require_pointer(ctx, -4);
+	const char* method_name = (const char*)duk_require_pointer(ctx, -3);
+	typedef std::tuple<ArgTs...> TupleT;
+	TupleT* tuple = (TupleT*)duk_require_pointer(ctx, -2);
+	RetT* out = (RetT*)duk_require_pointer(ctx, -1);
+	duk_pop_n(ctx, 4);
+
+	call_method_safe_helper(ctx, *obj, method_name, std::tuple<ArgTs...>(*tuple), typename make_indexes<ArgTs...>::type());
+	dukglue_read(ctx, -1, out);
+	return 1;
+}
+
+}
+}
+
+template <typename RetT, typename ObjT, typename... ArgTs>
+typename std::enable_if<std::is_void<RetT>::value, RetT>::type dukglue_pcall_method(duk_context* ctx, const ObjT& obj, const char* method_name, ArgTs... args)
+{
+	std::tuple<ArgTs...> tuple(args...);
+
+	duk_push_pointer(ctx, (void*)&obj);
+	duk_push_pointer(ctx, (void*)method_name);
+	duk_push_pointer(ctx, (void*)&tuple);
+	
+	duk_idx_t rc = duk_safe_call(ctx, &dukglue::detail::call_method_safe<RetT, ObjT, ArgTs...>, 3, 1);
+	if (rc != 0)
+		throw DukErrorException(ctx, rc);
+
+	duk_pop(ctx);  // remove result from stack
+}
+
+template <typename RetT, typename ObjT, typename... ArgTs>
+typename std::enable_if<!std::is_void<RetT>::value, RetT>::type dukglue_pcall_method(duk_context* ctx, const ObjT& obj, const char* method_name, ArgTs... args)
+{
+	std::tuple<ArgTs...> tuple(args...);
+	RetT out;
+
+	duk_push_pointer(ctx, (void*)&obj);
+	duk_push_pointer(ctx, (void*)method_name);
+	duk_push_pointer(ctx, (void*)&tuple);
+	duk_push_pointer(ctx, (void*)&out);
+
+	duk_idx_t rc = duk_safe_call(ctx, &dukglue::detail::call_method_safe<RetT, ObjT, ArgTs...>, 4, 1);
+	if (rc != 0)
+		throw DukErrorException(ctx, rc);
+
+	duk_pop(ctx);  // remove result from stack
+	return std::move(out);
+}
+
+
+// calls
+
+// leaves return value on the stack
+template <typename ObjT, typename... ArgTs>
+void dukglue_call(duk_context* ctx, const ObjT& func, ArgTs... args)
+{
+	dukglue_push(ctx, func);
+	if (!duk_is_callable(ctx, -1)) {
+		duk_pop(ctx);
+		duk_error(ctx, DUK_ERR_TYPE_ERROR, "Object is not callable");
+		return;
+	}
 
 	dukglue_push(ctx, args...);
 	duk_call(ctx, sizeof...(args));
-	duk_pop(ctx);  // pop return value
+}
+
+
+// safe call
+namespace dukglue {
+namespace detail {
+
+template <typename ObjT, typename... ArgTs, size_t... Indexes>
+void call_safe_helper(duk_context* ctx, const ObjT& obj, std::tuple<ArgTs...>&& tup, index_tuple<Indexes...> indexes)
+{
+	dukglue_call(ctx, obj, std::forward<ArgTs>(std::get<Indexes>(tup))...);
+}
+
+// leaves result on stack
+template <typename RetT, typename ObjT, typename... ArgTs>
+typename std::enable_if<std::is_void<RetT>::value, duk_ret_t>::type call_safe(duk_context* ctx)
+{
+	ObjT* obj = (ObjT*) duk_require_pointer(ctx, -2);
+	typedef std::tuple<ArgTs...> TupleT;
+	TupleT* tuple = (TupleT*) duk_require_pointer(ctx, -1);
+	duk_pop_2(ctx);
+
+	call_safe_helper(ctx, *obj, std::tuple<ArgTs...>(*tuple), typename make_indexes<ArgTs...>::type());
+	return 1;
+}
+
+// leaves result on stack
+// The result is read into RetT here because it can potentially trigger an error (with duk_error).
+// If we did it "above" this function, that error would trigger a panic instead of error handling.
+template <typename RetT, typename ObjT, typename... ArgTs>
+typename std::enable_if<!std::is_void<RetT>::value, duk_ret_t>::type call_safe(duk_context* ctx)
+{
+	ObjT* obj = (ObjT*) duk_require_pointer(ctx, -3);
+
+	typedef std::tuple<ArgTs...> TupleT;
+	TupleT* tuple = (TupleT*) duk_require_pointer(ctx, -2);
+	RetT* out = (RetT*) duk_require_pointer(ctx, -1);
+	duk_pop_3(ctx);
+
+	call_safe_helper(ctx, *obj, std::tuple<ArgTs...>(*tuple), typename make_indexes<ArgTs...>::type());
+	dukglue_read(ctx, -1, out);
+	return 1;
+}
+
+}
+}
+
+// Unlike duktape, this will remove the return value from the stack!
+template <typename RetT, typename ObjT, typename... ArgTs>
+typename std::enable_if<std::is_void<RetT>::value, RetT>::type dukglue_pcall(duk_context* ctx, const ObjT& obj, ArgTs... args)
+{
+	std::tuple<ArgTs...> tuple(args...);
+
+	duk_push_pointer(ctx, (void*) &obj);
+	duk_push_pointer(ctx, (void*) &tuple);
+	duk_int_t rc = duk_safe_call(ctx, &dukglue::detail::call_safe<RetT, ObjT, ArgTs...>, 2, 1);
+	if (rc != 0)
+		throw DukErrorException(ctx, rc);
+	duk_pop(ctx);  // remove result from stack
 }
 
 template <typename RetT, typename ObjT, typename... ArgTs>
-typename std::enable_if<!std::is_void<RetT>::value, RetT>::type dukglue_call(duk_context* ctx, const ObjT& obj, ArgTs... args)
+typename std::enable_if<!std::is_void<RetT>::value, RetT>::type dukglue_pcall(duk_context* ctx, const ObjT& obj, ArgTs... args)
 {
-	dukglue_push(ctx, obj);
-	if (!duk_is_callable(ctx, -1))
-		assert(false);  // obj is not callable
-
-	dukglue_push(ctx, args...);
-	duk_call(ctx, sizeof...(args));
-
-	RetT ret;
-	dukglue_read(ctx, -1, &ret);
-	duk_pop(ctx);
-	return ret;
+	std::tuple<ArgTs...> tuple(args...);
+	RetT result;
+	
+	duk_push_pointer(ctx, (void*)&obj);
+	duk_push_pointer(ctx, (void*)&tuple);
+	duk_push_pointer(ctx, (void*)&result);
+	duk_int_t rc = duk_safe_call(ctx, &dukglue::detail::call_safe<RetT, ObjT, ArgTs...>, 3, 1);
+	if (rc != 0)
+		throw DukErrorException(ctx, rc);
+	
+	duk_pop(ctx);  // remove result from stack
+	return std::move(result);
 }
