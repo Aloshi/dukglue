@@ -1,6 +1,7 @@
 #pragma once
 
 #include "detail_types.h"
+#include "dukvalue.h"
 
 #include <stdint.h>
 
@@ -82,5 +83,41 @@ namespace dukglue {
 				duk_push_string(ctx, value);
 			}
 		};
+
+		// DukValue
+		template<>
+		struct DukType<DukValue> {
+			typedef std::true_type IsValueType;
+
+			template <typename FullT>
+			static DukValue read(duk_context* ctx, duk_idx_t arg_idx) {
+				return DukValue::copy_from_stack(ctx, arg_idx);
+			}
+
+			template <typename FullT>
+			static void push(duk_context* ctx, const DukValue& value) {
+				assert(value.context() == ctx);
+				value.push();
+			}
+		};
+
+		// std::function
+		/*template <typename RetT, typename... ArgTs>
+		struct DukType< std::function<RetT(ArgTs...)> > {
+			typedef std::true_type IsValueType;
+
+			template<typename FullT>
+			static std::function<RetT(ArgTs...)> read(duk_context* ctx, duk_idx_t arg_idx) {
+				DukValue callable = DukValue::copy_from_stack(ctx, -1, DUK_TYPE_MASK_OBJECT);
+				return [ctx, callable] (ArgTs... args) -> RetT {
+					dukglue_call<RetT>(ctx, callable, args...);
+				};
+			}
+
+			template<typename FullT>
+			static void push(duk_context* ctx, std::function<RetT(ArgTs...)> value) {
+				static_assert(false, "Pushing an std::function has not been implemented yet. Sorry!");
+			}
+		};*/
 	}
 }

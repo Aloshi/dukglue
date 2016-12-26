@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.7)
 
 add_library(dukglue INTERFACE)
 
-target_include_directories(dukglue ${CMAKE_CURRENT_SOURCE_DIR})
+#target_include_directories(dukglue ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(DUKGLUE_HEADERS
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/dukglue.h
@@ -16,9 +16,11 @@ set(DUKGLUE_HEADERS
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/detail_traits.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/detail_typeinfo.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/detail_types.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/dukvalue.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/register_class.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/register_function.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/register_property.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/public_util.h
 )
 
 install(FILES

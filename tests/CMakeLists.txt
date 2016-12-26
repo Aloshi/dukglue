@@ -8,6 +8,7 @@ add_executable(dukglue_test
   test_multiple_contexts.cpp
   test_primitives.cpp
   test_properties.cpp
+  test_dukvalue.cpp
 
   duktape.h
   duktape.c
