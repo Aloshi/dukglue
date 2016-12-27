@@ -232,6 +232,12 @@ public:
 	}
 
 	// various (type-safe) getters
+	inline bool as_bool() const {
+		if (mType != BOOLEAN)
+			throw DukException() << "Expected boolean, got " << type_name();
+		return mPOD.boolean;
+	}
+
 	inline double as_double() const {
 		if (mType != NUMBER)
 			throw DukException() << "Expected number, got " << type_name();

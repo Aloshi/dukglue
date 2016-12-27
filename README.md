@@ -248,6 +248,131 @@ test.value;  // throws an error
 
   (it is also safe to re-define properties like in this example)
 
+* There are utility functions for pushing arbitrary values onto the Duktape stack:
+
+```cpp
+// you can push primitive types
+int someValue = 12;
+dukglue_push(ctx, someValue);
+
+// you can push native C++ objects
+Dog* myDog = new Dog("Zoey");
+dukglue_push(ctx, myDog);  // pushes canonical script object for myDog
+
+// you can push multiple values at once
+dukglue_push(ctx, 12, myDog);  // stack now contains "12" at position -2 and "myDog" at -1
+```
+
+* There is a utility function for doing a `duk_peval` and getting the return value safely:
+
+```cpp
+// template argument is the return value we expect
+int result = dukglue_peval<int>(ctx, "4 * 5");
+result == 20;  // true
+duk_get_top(ctx) == 0;  // the Duktape stack is empty, return value is always popped off the stack
+
+int error = dukglue_peval<int>(ctx, "'a horse-sized duck'");  // string is not a number; throws a DukException
+
+// we can also choose to ignore the return value
+dukglue_peval<void>(ctx, "function makingAFunction() { doThings(); }");
+// the Duktape stack will be clean
+```
+
+* There is a helper function for registering script objects as globals (useful for singletons):
+
+```cpp
+Dog* myDog = new Dog("Zoey");
+dukglue_register_global(ctx, myDog, "testDog");
+// testDog in script now refers to myDog in C++
+// use dukglue_invalidate_object(ctx, myDog) to invalidate it
+
+// --------------
+// Script:
+testDog.getName() == "Zoey";  // this evaluates to true
+```
+
+* You can call script methods on native objects (useful for callbacks that are defined as properties):
+
+```cpp
+// continuing from the above example...
+// Script:
+testDog.barkAt = function (at) { print(this.getName() + " barks at " + at +"!"); }
+
+// --------------
+// C++:
+// template parameter is required, and is the desired return type for the method
+dukglue_pcall_method<void>(ctx, myDog, "barkAt", "absolutely nothing");  // prints "Zoey barks at absolutely nothing!"
+```
+
+* We can get return values from methods:
+
+```cpp
+// Script:
+testDog.checkWantsTreat = function() { return true; }  // frequency chosen via empirical evidence
+
+// --------------
+// C++:
+bool wantsTreatNow = dukglue_pcall_method<bool>(ctx, myDog, "checkWantsTreat");  // true
+
+// return types are typechecked, so the following is an error (reported via exception):
+std::string error = dukglue_pcall_method<std::string>(ctx, myDog, "checkWantsTreat");  // throws DukException (inherits std::exception)
+
+// we can ignore the return value (whatever it is)
+dukglue_pcall_method<void>(ctx, myDog, "checkWantsTreat");
+```
+
+
+* You can get/persist references to script values using the `DukValue` class:
+
+```cpp
+// template parameter is return type
+DukValue testObj = dukglue_peval<DukValue>(ctx,
+  "var testObj = new Object();"
+  "testObj.value = 42;"
+  "testObj.myFunc = function(a, b) { return a*b; };"
+  "testObj;");  // returns testObj
+
+// testObj now holds a reference to the testObj we made in script above
+// we can call methods on it:
+{
+  int result = dukglue_pcall_method<int>(ctx, testObj, "myFunc", 3, 4);
+  result == 12;  // true
+}
+
+// if we don't know what the return type will be, we can use a DukValue:
+{
+  DukValue result = dukglue_pcall_method<DukValue>(ctx, testObj, "myFunc", 5, 4);
+  if (result.type() == DukValue::NUMBER)
+    std::cout << "Returned " << result.as_int() << "\n";
+  if (result.type() == DukValue::UNDEFINED)
+    std::cout << "Didn't return anything\n";
+}
+
+// we can also have DukValue hold a script function
+DukValue printValueFunc = dukglue_peval<DukValue>(ctx,
+  "function printValueProperty(obj) { print(obj.value); };"
+  "printValueProperty;");
+
+// we can use duk_pcall to call a callable DukValue (i.e. a function)
+// and we can also use a DukValue as a parameter to another function
+dukglue_pcall(ctx, printValueFunc, testObj);  // prints 42
+
+// we can copy DukValues if we want:
+DukValue printCopy = printValueFunc;
+printCopy == printValueFunc;  // true
+// since printCopy.type() == OBJECT, both values will reference the same object
+// (i.e. changing printCopy with also change printValueFunc)
+// DukValues are reference counted, you don't need to worry about manually freeing them!
+
+// even if we make a totally new DukValue, it will still reference the same script object
+// (and the equality operator still works):
+DukValue anotherPrintValueFunc = dukglue_peval<DukValue>(ctx, "printValueProperty;");
+anotherPrintValueFunc == printValueFunc;  // true
+```
+
+  (a DukValue can hold any Duktape value except for buffer and lightfunc)
+  (C++ getters for type, null, boolean, number, string, and pointer - no getter for native objects yet, though this is definitely possible)
+
 
 What Dukglue **doesn't do:**
 
@@ -263,7 +388,7 @@ What Dukglue **doesn't do:**
 
 * Dukglue *might* not follow the "compact footprint" goal of Duktape. I picked Duktape for it's simple API, not to script my toaster. YMMV if you're trying to compile this for a microcontroller. Why?
 
-    * Dukglue currently needs RTTI turned on. When Dukglue checks if an object can be cast to a particular type, it uses the typeid operator to compare if two types are equal. It's always used on compile-time types though, so you could implement it without RTTI if you needed to. I believe this is the only place RTTI is used (and a smart compiler should do it at compile-time).
+    * Dukglue currently needs RTTI turned on. When Dukglue checks if an object can be cast to a particular type, it uses the typeid operator to compare if two types are equal. It's always used on compile-time types though, so you could implement it without RTTI if you needed to. Dukglue also uses exceptions in two places: the `dukglue_pcall*` functions (since these return a value instead of an error code, unlike Duktape), and the `DukValue` class (to communicate type errors on getters and unsupported types).
 
     * An std::unordered_map is used to efficiently map object pointers to an internal Duktape array (see the `RefMap` class in `detail_refs.h`). This has some unnecessary memory overhead for every object (probably around 32 bytes per object). This could be improved to have no memory overhead - see detail_refs.h's comments for more information.
 
@@ -274,11 +399,11 @@ What Dukglue **doesn't do:**
 Getting Started
 ===============
 
-Dukglue has been tested with MSVC 2015, clang++-3.6, and g++-4.8. Your compiler must support at least C++11 to use Dukglue.
+Dukglue has been tested with MSVC 2015, clang++-3.8, and g++-5.4. Your compiler must support at least C++11 to use Dukglue.
 
 Dukglue is a header-only library. Dukglue requires Duktape to be installed such that `#include <duktape.h>` works.
 
-Everything you need is in the `dukglue` directory of this repository. If you prefer not to mess with CMake or build settings, you should be able to just copy the `dukglue` directory into your project.
+Everything you need (except Duktape) is in the `include` directory of this repository. If you prefer not to mess with CMake or build settings, you should be able to just copy the `include` directory into your project.
 
 I've also created some CMake files to try and make installing Dukglue as painless as possible:
 
@@ -292,29 +417,6 @@ sudo make install
 This will copy the Dukglue headers to `/usr/local/include/dukglue/*` by default. You can use `cmake .. -DCMAKE_INSTALL_PREFIX:PATH=.` to change the install directory to something else (will install to `CMAKE_INSTALL_PREFIX/include/dukglue/*`).
 
 Now, all you need to do is add the include paths for Dukglue to your project and add duktape.c/duktape.h to your project.
-
-If your project is using CMake, feel free to use the FindDukglue.cmake in `cmake_modules`. It assumes you will include Duktape directly in your project. You can use it like this:
-
-```cmake
-cmake_minimum_required(VERSION 3.1.0)
-
-project(MyAwesomeProject)
-
-find_package(Dukglue REQUIRED)
-
-add_executable(MyAwesomeProject
-  main.cpp
-  # ... your files ...
-  duktape.c
-  duktape.h
-  duk_config.h
-)
-
-include_directories(${DUKGLUE_INCLUDE_DIR})
-
-# Enable C++11 mode for your compiler, if you don't do this you will get crazy errors
-target_compile_features(MyAwesomeProject PRIVATE cxx_variadic_templates cxx_auto_type)
-```
 
 Then you can try the example below:
 
@@ -373,11 +475,9 @@ int main()
 TODO
 ====
 
-* Add helpers for calling script functions and handling the values that come out
+* Make better organized documentation
 
-* write a C++ wrapper for duk_context that has member functions that forward to the dukglue_* functions
-
-* write a tutorial on how to add custom value types
+* Write a tutorial on how to add custom value types
 
 http://aloshi.com
 

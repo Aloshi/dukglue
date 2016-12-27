@@ -3,8 +3,6 @@
 #include "dukexception.h"
 #include "detail_traits.h"  // for index_tuple/make_indexes
 
-#include <assert.h>  // TODO remove this
-
 // This file has some useful utility functions for users.
 // Hopefully this saves you from wading through the implementation.
 
