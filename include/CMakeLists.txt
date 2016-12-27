@@ -28,5 +28,7 @@ install(FILES
   ${DUKGLUE_HEADERS} DESTINATION include/dukglue
 )
 
+target_include_directories(dukglue INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
 # so CMake generates a visual studio project...
 add_custom_target(dukglue_ide SOURCES ${DUKGLUE_HEADERS})
