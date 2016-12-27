@@ -60,7 +60,7 @@ void dukglue_register_property(duk_context* ctx, std::nullptr_t getter, std::nul
 	// strictly speaking I think duktape can probably handle neither
 	// (according to the wonderful API docs), but I don't know why you
 	// would want to do this in the first place
-	static_assert(false, "Must have getter or setter");
+	static_assert(std::is_void<Cls>::value, "Must have getter or setter");
 }
 
 inline duk_ret_t dukglue_throw_error(duk_context* ctx)
