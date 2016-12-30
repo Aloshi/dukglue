@@ -271,23 +271,26 @@ duk_ret_t eval_safe(duk_context* ctx)
 template <typename RetT>
 typename std::enable_if<std::is_void<RetT>::value, RetT>::type dukglue_peval(duk_context* ctx, const char* str)
 {
+	int prev_top = duk_get_top(ctx);
 	int rc = duk_peval_string(ctx, str);
 	if (rc != 0)
 		throw DukErrorException(ctx, rc);
 
-	duk_pop(ctx);
+	duk_pop_n(ctx, duk_get_top(ctx) - prev_top);  // pop any results
 }
 
 template <typename RetT>
 typename std::enable_if<!std::is_void<RetT>::value, RetT>::type dukglue_peval(duk_context* ctx, const char* str)
 {
+	int prev_top = duk_get_top(ctx);
+
 	RetT ret;
 	duk_push_pointer(ctx, (void*)str);
 	duk_push_pointer(ctx, (void*)&ret);
 	int rc = duk_safe_call(ctx, &dukglue::detail::eval_safe<RetT>, 2, 1);
 	if (rc != 0)
 		throw DukErrorException(ctx, rc);
-	duk_pop(ctx);
+	duk_pop_n(ctx, duk_get_top(ctx) - prev_top);  // pop any results
 	return ret;
 }
 
