@@ -101,6 +101,11 @@ namespace dukglue {
 
 			template <typename FullT>
 			static void push(duk_context* ctx, const DukValue& value) {
+				if (value.context() == NULL) {
+					duk_error(ctx, DUK_ERR_ERROR, "DukValue is uninitialized");
+					return;
+				}
+
 				if (value.context() != ctx) {
 					duk_error(ctx, DUK_ERR_ERROR, "DukValue comes from a different context");
 					return;
