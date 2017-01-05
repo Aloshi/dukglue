@@ -3,55 +3,54 @@
 #include "detail_method.h"
 
 // const getter, setter
-template <typename Cls, typename ValT>
+template <typename Cls, typename RetT, typename ArgT>
 void dukglue_register_property(duk_context* ctx,
-	ValT(Cls::*getter)() const,
-	void(Cls::*setter)(ValT),
+	RetT(Cls::*getter)() const,
+	void(Cls::*setter)(ArgT),
 	const char* name)
 {
-	dukglue_register_property<true, Cls, ValT>(ctx, getter, setter, name);
+	dukglue_register_property<true, Cls, RetT, ArgT>(ctx, getter, setter, name);
 }
 
 // const getter, no setter
-template <typename Cls, typename ValT>
+template <typename Cls, typename RetT>
 void dukglue_register_property(duk_context* ctx,
-	ValT(Cls::*getter)() const,
+	RetT(Cls::*getter)() const,
 	std::nullptr_t setter,
 	const char* name)
 {
-	dukglue_register_property<true, Cls, ValT>(ctx, getter, setter, name);
+	dukglue_register_property<true, Cls, RetT, RetT>(ctx, getter, setter, name);
 }
 
 // non-const getter, setter
-template <typename Cls, typename ValT>
+template <typename Cls, typename RetT, typename ArgT>
 void dukglue_register_property(duk_context* ctx,
-	ValT(Cls::*getter)(),
-	void(Cls::*setter)(ValT),
+	RetT(Cls::*getter)(),
+	void(Cls::*setter)(ArgT),
 	const char* name)
 {
-	dukglue_register_property<false, Cls, ValT>(ctx, getter, setter, name);
+	dukglue_register_property<false, Cls, RetT, ArgT>(ctx, getter, setter, name);
 }
 
 // non-const getter, no setter
-template <typename Cls, typename ValT>
+template <typename Cls, typename RetT>
 void dukglue_register_property(duk_context* ctx,
-	ValT(Cls::*getter)(),
+	RetT(Cls::*getter)(),
 	std::nullptr_t setter,
 	const char* name)
 {
-	dukglue_register_property<false, Cls, ValT>(ctx, getter, setter, name);
+	dukglue_register_property<false, Cls, RetT, RetT>(ctx, getter, setter, name);
 }
 
 // no getter, setter
-template <typename Cls, typename ValT>
+template <typename Cls, typename ArgT>
 void dukglue_register_property(duk_context* ctx,
 	std::nullptr_t getter,
-	void(Cls::*setter)(ValT),
+	void(Cls::*setter)(ArgT),
 	const char* name)
 {
-	dukglue_register_property<false, Cls, ValT>(ctx, getter, setter, name);
+	dukglue_register_property<false, Cls, ArgT, ArgT>(ctx, getter, setter, name);
 }
-
 
 // no getter, no setter
 template <typename Cls, typename ValT>
@@ -68,15 +67,15 @@ inline duk_ret_t dukglue_throw_error(duk_context* ctx)
 	duk_error(ctx, DUK_ERR_TYPE_ERROR, "Property does not have getter or setter.");
 }
 
-template <bool isConstGetter, typename Cls, typename ValT>
+template <bool isConstGetter, typename Cls, typename RetT, typename ArgT>
 void dukglue_register_property(duk_context* ctx,
-	typename std::conditional<isConstGetter, ValT(Cls::*)() const, ValT(Cls::*)()>::type getter,
-	void(Cls::*setter)(ValT),
+	typename std::conditional<isConstGetter, RetT(Cls::*)() const, RetT(Cls::*)()>::type getter,
+	void(Cls::*setter)(ArgT),
 	const char* name)
 {
 	using namespace dukglue::detail;
-	typedef MethodInfo<isConstGetter, Cls, ValT> GetterMethodInfo;
-	typedef MethodInfo<false, Cls, void, ValT> SetterMethodInfo;
+	typedef MethodInfo<isConstGetter, Cls, RetT> GetterMethodInfo;
+	typedef MethodInfo<false, Cls, void, ArgT> SetterMethodInfo;
 
 	ProtoManager::push_prototype<Cls>(ctx);
 
