@@ -56,6 +56,106 @@ void test_dukvalue()
 		duk_pop(ctx);
 	}
 
+	// serialization (undefined)
+	{
+		std::vector<char> buff;
+
+		{
+			duk_push_undefined(ctx);
+			DukValue v = DukValue::take_from_stack(ctx);
+			buff = v.serialize();
+		}
+
+		DukValue v = DukValue::deserialize(ctx, buff.data(), buff.size());
+		test_assert(v.type() == DukValue::UNDEFINED);
+	}
+
+	// serialization (null)
+	{
+		std::vector<char> buff;
+
+		{
+			duk_push_null(ctx);
+			DukValue v = DukValue::take_from_stack(ctx);
+			buff = v.serialize();
+		}
+
+		DukValue v = DukValue::deserialize(ctx, buff.data(), buff.size());
+		test_assert(v.type() == DukValue::NULLREF);
+	}
+
+	// serialization (boolean)
+	{
+		std::vector<char> buff;
+
+		{
+			duk_push_boolean(ctx, true);
+			DukValue v = DukValue::take_from_stack(ctx);
+			buff = v.serialize();
+		}
+
+		DukValue v = DukValue::deserialize(ctx, buff.data(), buff.size());
+		test_assert(v.type() == DukValue::BOOLEAN);
+		test_assert(v.as_bool() == true);
+	}
+
+	// serialization (number)
+	{
+		std::vector<char> buff;
+
+		{
+			duk_push_number(ctx, 13.37);
+			DukValue v = DukValue::take_from_stack(ctx);
+			buff = v.serialize();
+		}
+
+		DukValue v = DukValue::deserialize(ctx, buff.data(), buff.size());
+		test_assert(v.type() == DukValue::NUMBER);
+		test_assert(v.as_double() == 13.37);
+	}
+
+	// serialization (string)
+	{
+		std::vector<char> buff;
+
+		{
+			duk_push_string(ctx, "this is a test");
+			DukValue v = DukValue::take_from_stack(ctx);
+			buff = v.serialize();
+		}
+
+		DukValue v = DukValue::deserialize(ctx, buff.data(), buff.size());
+		test_assert(v.type() == DukValue::STRING);
+		test_assert(v.as_string() == "this is a test");
+	}
+
+	// serialization (basic object)
+	{
+		std::vector<char> buff;
+
+		{
+			duk_push_object(ctx);
+			duk_push_number(ctx, 42);
+			duk_put_prop_string(ctx, -2, "x");
+			duk_push_number(ctx, 369);
+			duk_put_prop_string(ctx, -2, "y");
+			DukValue v = DukValue::take_from_stack(ctx);
+			buff = v.serialize();
+		}
+
+		DukValue v = DukValue::deserialize(ctx, buff.data(), buff.size());
+		test_assert(v.type() == DukValue::OBJECT);
+		v.push();
+
+		duk_get_prop_string(ctx, -1, "x");
+		test_assert(duk_require_number(ctx, -1) == 42);
+
+		duk_get_prop_string(ctx, -2, "y");
+		test_assert(duk_require_number(ctx, -1) == 369);
+
+		duk_pop_3(ctx);
+	}
+
 	// test ref counting (this is a pretty weak test, but it's better than nothing...)
 	{
 		test_eval(ctx, "new Object();");

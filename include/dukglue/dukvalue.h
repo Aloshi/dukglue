@@ -3,6 +3,7 @@
 #include <duktape.h>
 #include <stdint.h>
 #include <string>
+#include <vector>
 
 #include "dukexception.h"
 
@@ -27,7 +28,7 @@
 // to the same script object isn't a very common thing.
 class DukValue {
 public:
-	enum Type {
+	enum Type : uint8_t {
 		//NONE = DUK_TYPE_NONE,
 		UNDEFINED = DUK_TYPE_UNDEFINED,
 		NULLREF = DUK_TYPE_NULL,
@@ -183,6 +184,88 @@ public:
 		return std::move(value);
 	}
 
+protected:
+	static duk_ret_t json_decode_safe(duk_context* ctx)
+	{
+		duk_json_decode(ctx, -1);
+		return 1;
+	}
+
+public:
+	static_assert(sizeof(char) == 1, "Serialization probably broke");
+	static DukValue deserialize(duk_context* ctx, const char* data, size_t data_len) {
+		DukValue v;
+		v.mContext = ctx;
+		v.mType = *((Type*)data);
+
+		const char* data_ptr = data + sizeof(Type);
+		data_len -= sizeof(Type);
+
+		switch (v.mType) {
+		case UNDEFINED:
+		case NULLREF:
+			break;
+
+		case BOOLEAN:
+		{
+			if (data_len < 1)
+				throw DukException() << "Malformed boolean data";
+
+			v.mPOD.boolean = data[1] == 1 ? true : false;
+			break;
+		}
+
+		case NUMBER:
+		{
+			if (data_len < sizeof(double))
+				throw DukException() << "Malformed number data";
+
+			v.mPOD.number = *((double*)data_ptr);
+			break;
+		}
+
+		case STRING:
+		{
+			if (data_len < sizeof(uint32_t))
+				throw DukException() << "Malformed string data (no length)";
+			uint32_t str_len = *((uint32_t*)data_ptr);
+
+			if (data_len < sizeof(uint32_t) + str_len)
+				throw DukException() << "Malformed string data (appears truncated)";
+
+			const char* str_data = (data_ptr + sizeof(uint32_t));
+			v.mString.assign(str_data, str_len);
+			break;
+		}
+
+		case OBJECT:
+		{
+			if (data_len < sizeof(uint32_t))
+				throw DukException() << "Malformed object JSON data (no length)";
+			uint32_t json_len = *((uint32_t*)data_ptr);
+
+			if (data_len < sizeof(uint32_t) + json_len)
+				throw DukException() << "Malformed object JSON data (appears truncated)";
+
+			const char* json_data = (data_ptr + sizeof(uint32_t));
+			duk_push_lstring(ctx, json_data, json_len);
+			int rc = duk_safe_call(ctx, &json_decode_safe, 1, 1);
+			if (rc) {
+				throw DukErrorException(ctx, rc) << "Could not decode JSON";
+			} else {
+				v.mPOD.ref_array_idx = stash_ref(ctx, -1);
+				duk_pop(ctx);
+			}
+			break;
+		}
+
+		default:
+			throw DukException() << "not implemented";
+		}
+
+		return std::move(v);
+	}
+
 	// same as above (copy_from_stack), but also removes the value we copied from the stack
 	static DukValue take_from_stack(duk_context* ctx, duk_idx_t idx = -1) {
 		DukValue val = copy_from_stack(ctx, idx);
@@ -302,6 +385,87 @@ public:
 
 	inline duk_context* context() const {
 		return mContext;
+	}
+
+	// Important limitations:
+	// - The returned value is binary and will not behave well if you treat it like a string (it will almost certainly contain '\0').
+	//   If you need to transport it like a string, maybe try encoding it as base64.
+	// - Strings longer than 2^32 (UINT32_MAX) characters will throw an exception. You can raise this to be a uint64_t if you need
+	//   really long strings for some reason (be sure to change DukValue::deserialize() as well).
+	// - Objects are encoded to JSON and then sent like a string. If your object can't be encoded as JSON (i.e. it's a function),
+	//   this will not work. This can be done, but I chose not to because it poses a security issue if you deserializing untrusted data.
+	//   If you require this functionality, you'll have to add it yourself with using duk_dump_function(...).
+	static_assert(sizeof(char) == 1, "Serialization probably broke");
+	std::vector<char> serialize() const {
+		std::vector<char> buff;
+		buff.resize(sizeof(Type));
+		*((Type*)buff.data()) = mType;
+
+		switch (mType) {
+		case UNDEFINED:
+		case NULLREF:
+			break;
+
+		case BOOLEAN:
+		{
+			buff.push_back(mPOD.boolean ? 1 : 0);
+			break;
+		}
+
+		case NUMBER:
+		{
+			buff.resize(buff.size() + sizeof(double));
+			*((double*)(buff.data() + sizeof(Type))) = mPOD.number;
+			break;
+		}
+
+		case STRING:
+		{
+			if (mString.length() > static_cast<size_t>(UINT32_MAX))
+				throw DukException() << "String length larger than uint32_t max";
+
+			uint32_t len = mString.length();
+			buff.resize(buff.size() + sizeof(uint32_t) + len);
+
+			uint32_t* len_ptr = (uint32_t*)(buff.data() + sizeof(Type));
+			*len_ptr = len;
+
+			char* out_ptr = (char*)(buff.data() + sizeof(Type) + sizeof(uint32_t));
+			strncpy(out_ptr, mString.data(), len);  // note: this will NOT be null-terminated
+			break;
+		}
+
+		case OBJECT:
+		{
+			push();
+			if (duk_is_function(mContext, -1)) {
+				duk_pop(mContext);
+				throw DukException() << "Functions cannot be serialized";
+				// well, technically they can...see the comments at the start of this method
+			}
+
+			std::string json = duk_json_encode(mContext, -1);
+			duk_pop(mContext);
+
+			if (json.length() > static_cast<size_t>(UINT32_MAX))
+				throw DukException() << "JSON length larger than uint32_t max";
+
+			uint32_t len = json.length();
+			buff.resize(buff.size() + sizeof(uint32_t) + len);
+
+			uint32_t* len_ptr = (uint32_t*)(buff.data() + sizeof(Type));
+			*len_ptr = len;
+
+			char* out_ptr = (char*)(buff.data() + sizeof(Type) + sizeof(uint32_t));
+			strncpy(out_ptr, json.data(), len);  // note: this will NOT be null-terminated
+			break;
+		}
+
+		default:
+			throw DukException() << "Type not implemented for serialization.";
+		}
+
+		return std::move(buff);
 	}
 
 private:
