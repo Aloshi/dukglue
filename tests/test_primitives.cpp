@@ -55,14 +55,17 @@ void test_primitives() {
 
 	dukglue_register_function(ctx, test_no_args, "test_no_args");
 	test_eval(ctx, "test_no_args();");
+	duk_pop(ctx);
 	//test_eval_expect_error(ctx, "test_no_args(42);");
 
 	dukglue_register_function(ctx, test_one_arg, "test_one_arg");
 	test_eval(ctx, "test_one_arg(7);");
+	duk_pop(ctx);
 	test_eval_expect_error(ctx, "test_one_arg('butts');");
 
 	dukglue_register_function(ctx, test_two_args, "test_two_args");
 	test_eval(ctx, "test_two_args(2, 'butts');");
+	duk_pop(ctx);
 	//test_eval_expect_error(ctx, "test_two_args(2, 'butts', 4);");
 	test_eval_expect_error(ctx, "test_two_args('butts', 2);");
 	test_eval_expect_error(ctx, "test_two_args('butts');");
@@ -88,6 +91,7 @@ void test_primitives() {
 	// this shouldn't compile and give a sane error message ("Cannot return pointer to value type.")
 	//dukglue_register_function(ctx, get_ptr_cpp_string, "get_ptr_cpp_string");
 
+	test_assert(duk_get_top(ctx) == 0);
 	duk_destroy_heap(ctx);
 
 	std::cout << "Primitives tested OK" << std::endl;

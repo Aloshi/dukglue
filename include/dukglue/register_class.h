@@ -118,6 +118,45 @@ void dukglue_register_method(duk_context* ctx, typename std::conditional<isConst
 	duk_pop(ctx); // pop prototype
 }
 
+// methods with a variable number of (script) arguments
+template<class Cls>
+inline void dukglue_register_method_varargs(duk_context* ctx, duk_ret_t(Cls::*method)(duk_context*), const char* name)
+{
+	dukglue_register_method_varargs<false, Cls>(ctx, method, name);
+}
+
+template<class Cls>
+inline void dukglue_register_method_varargs(duk_context* ctx, duk_ret_t(Cls::*method)(duk_context*) const, const char* name)
+{
+	dukglue_register_method_varargs<true, Cls>(ctx, method, name);
+}
+
+template<bool isConst, typename Cls>
+void dukglue_register_method_varargs(duk_context* ctx,
+	typename std::conditional<isConst, duk_ret_t(Cls::*)(duk_context*) const, duk_ret_t(Cls::*)(duk_context*)>::type method,
+	const char* name)
+{
+	using namespace dukglue::detail;
+	typedef MethodVariadicRuntime<isConst, Cls> MethodVariadicInfo;
+
+	duk_c_function method_func = MethodVariadicInfo::call_native_method;
+
+	ProtoManager::push_prototype<Cls>(ctx);
+
+	duk_push_c_function(ctx, method_func, DUK_VARARGS);
+
+	duk_push_pointer(ctx, new typename MethodVariadicInfo::MethodHolder{ method });
+	duk_put_prop_string(ctx, -2, "\xFF" "method_holder");  // consumes raw method pointer
+
+	// make sure we free the method_holder when this function is removed
+	duk_push_c_function(ctx, MethodVariadicInfo::finalize_method, 1);
+	duk_set_finalizer(ctx, -2);
+
+	duk_put_prop_string(ctx, -2, name); // consumes method function
+
+	duk_pop(ctx); // pop prototype
+}
+
 inline void dukglue_invalidate_object(duk_context* ctx, void* obj_ptr)
 {
 	dukglue::detail::RefManager::find_and_invalidate_native_object(ctx, obj_ptr);
@@ -132,4 +171,5 @@ void dukglue_register_delete(duk_context* ctx)
 	dukglue::detail::ProtoManager::push_prototype<Cls>(ctx);
 	duk_push_c_function(ctx, delete_func, 0);
 	duk_put_prop_string(ctx, -2, "delete");
+	duk_pop(ctx);  // pop prototype
 }

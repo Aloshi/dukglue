@@ -119,4 +119,5 @@ void dukglue_register_property(duk_context* ctx,
 		| DUK_DEFPROP_FORCE /* allow overriding built-ins and previously defined properties */;
 
 	duk_def_prop(ctx, -4, flags);
+	duk_pop(ctx);  // pop prototype
 }

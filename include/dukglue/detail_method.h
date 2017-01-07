@@ -102,6 +102,7 @@ namespace dukglue
 						return DUK_RET_TYPE_ERROR;
 					}
 
+					duk_pop_2(ctx);
 
 					// (should always be valid unless someone is intentionally messing with this.obj_ptr...)
 					Cls* obj = static_cast<Cls*>(obj_void);
@@ -132,6 +133,49 @@ namespace dukglue
 					dukglue::detail::apply_method(method, obj, args);
 				}
 			};
+		};
+
+		template <bool isConst, typename Cls>
+		struct MethodVariadicRuntime
+		{
+			typedef MethodInfo<isConst, Cls, duk_ret_t, duk_context*> MethodInfo;
+			typedef typename MethodInfo::MethodHolder MethodHolder;
+
+			static duk_ret_t finalize_method(duk_context* ctx)
+			{
+				return MethodInfo::MethodRuntime::finalize_method(ctx);
+			}
+
+			static duk_ret_t call_native_method(duk_context* ctx)
+			{
+				// get this.obj_ptr
+				duk_push_this(ctx);
+				duk_get_prop_string(ctx, -1, "\xFF" "obj_ptr");
+				void* obj_void = duk_get_pointer(ctx, -1);
+				if (obj_void == nullptr) {
+					duk_error(ctx, DUK_RET_REFERENCE_ERROR, "Invalid native object for 'this'");
+					return DUK_RET_REFERENCE_ERROR;
+				}
+
+				duk_pop_2(ctx);  // pop this.obj_ptr and this
+
+				// get current_function.method_info
+				duk_push_current_function(ctx);
+				duk_get_prop_string(ctx, -1, "\xFF" "method_holder");
+				void* method_holder_void = duk_require_pointer(ctx, -1);
+				if (method_holder_void == nullptr) {
+					duk_error(ctx, DUK_RET_TYPE_ERROR, "Method pointer missing?!");
+					return DUK_RET_TYPE_ERROR;
+				}
+
+				duk_pop_2(ctx);
+
+				// (should always be valid unless someone is intentionally messing with this.obj_ptr...)
+				Cls* obj = static_cast<Cls*>(obj_void);
+				MethodHolder* method_holder = static_cast<MethodHolder*>(method_holder_void);
+
+				return (*obj.*method_holder->method)(ctx);
+			}
 		};
 	}
 }
