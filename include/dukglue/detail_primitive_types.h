@@ -3,6 +3,7 @@
 #include "detail_types.h"
 #include "dukvalue.h"
 
+#include <vector>
 #include <stdint.h>
 
 namespace dukglue {
@@ -116,6 +117,39 @@ namespace dukglue {
 				} catch (DukException& e) {
 					// only DukException can be thrown by DukValue::copy_from_stack
 					duk_error(ctx, DUK_ERR_ERROR, e.what());
+				}
+			}
+		};
+
+		// std::vector (as value)
+		template<typename T>
+		struct DukType< std::vector<T> > {
+			typedef std::true_type IsValueType;
+
+			template <typename FullT>
+			static std::vector<T> read(duk_context* ctx, duk_idx_t arg_idx) {
+				if (!duk_is_array(ctx, arg_idx))
+					duk_error(ctx, DUK_ERR_TYPE_ERROR, "Argument %d: expected array.", arg_idx);
+
+				duk_size_t len = duk_get_length(ctx, arg_idx);
+
+				std::vector<T> vec;
+				vec.reserve(len);
+				for (duk_size_t i = 0; i < len; i++) {
+					duk_get_prop_index(ctx, arg_idx, i);
+					vec.push_back(DukType< typename Bare<T>::type >::read<T>(ctx, -1));
+					duk_pop(ctx);
+				}
+				return vec;
+			}
+
+			template <typename FullT>
+			static void push(duk_context* ctx, const std::vector<T>& value) {
+				duk_idx_t obj_idx = duk_push_array(ctx);
+
+				for (size_t i = 0; i < value.size(); i++) {
+					DukType< typename Bare<T>::type >::push<T>(ctx, value[i]);
+					duk_put_prop_index(ctx, obj_idx, i);
 				}
 			}
 		};

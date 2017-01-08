@@ -115,6 +115,24 @@ void test_classes() {
 	test_eval(ctx, "test.delete()");
 	duk_pop(ctx);
 
+	// std::vector<Cls*>
+	{
+		std::vector<Dog*> dogs = { new Dog("Gus"), new Dog("Sammy"), new Dog("Zoey") };
+		dukglue_push(ctx, dogs);
+
+		dogs.clear();
+		dukglue_read(ctx, -1, &dogs);
+		duk_pop(ctx);
+
+		test_assert(dogs.size() == 3);
+		test_assert(dogs.at(0)->getName() == "Gus");
+		test_assert(dogs.at(1)->getName() == "Sammy");
+		test_assert(dogs.at(2)->getName() == "Zoey");
+
+		for (unsigned int i = 0; i < 3; i++)
+			delete dogs.at(i);
+	}
+
 	test_assert(duk_get_top(ctx) == 0);
 	duk_destroy_heap(ctx);
 

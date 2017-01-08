@@ -156,6 +156,21 @@ void test_dukvalue()
 		duk_pop_3(ctx);
 	}
 
+	// std::vector<DukValue>
+	{
+		std::vector<DukValue> arr = dukglue_peval< std::vector<DukValue> >(ctx, "[1, true, 2.34, null, 'asdf']");
+		test_assert(arr.size() == 5);
+		test_assert(arr.at(0).type() == DukValue::NUMBER);
+		test_assert(arr.at(0).as_int() == 1);
+		test_assert(arr.at(1).type() == DukValue::BOOLEAN);
+		test_assert(arr.at(1).as_bool() == true);
+		test_assert(arr.at(2).type() == DukValue::NUMBER);
+		test_assert(arr.at(2).as_double() == 2.34);
+		test_assert(arr.at(3).type() == DukValue::NULLREF);
+		test_assert(arr.at(4).type() == DukValue::STRING);
+		test_assert(arr.at(4).as_string() == "asdf");
+	}
+
 	// test ref counting (this is a pretty weak test, but it's better than nothing...)
 	{
 		test_eval(ctx, "new Object();");

@@ -91,6 +91,21 @@ void test_primitives() {
 	// this shouldn't compile and give a sane error message ("Cannot return pointer to value type.")
 	//dukglue_register_function(ctx, get_ptr_cpp_string, "get_ptr_cpp_string");
 
+	// std::vector for primitive types
+	{
+		std::vector<int> nums = { 1, 2, 3 };
+		dukglue_push(ctx, nums);
+
+		nums.clear();
+		dukglue_read(ctx, -1, &nums);
+		duk_pop(ctx);
+
+		test_assert(nums.size() == 3);
+		test_assert(nums.at(0) == 1);
+		test_assert(nums.at(1) == 2);
+		test_assert(nums.at(2) == 3);
+	}
+
 	test_assert(duk_get_top(ctx) == 0);
 	duk_destroy_heap(ctx);
 
