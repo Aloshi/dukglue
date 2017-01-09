@@ -6,7 +6,7 @@
 namespace dukglue {
   namespace detail {
 
-    template<typename Cls, typename... Ts>
+    template<bool managed, typename Cls, typename... Ts>
     static duk_ret_t call_native_constructor(duk_context* ctx)
     {
       if (!duk_is_constructor_call(ctx)) {
@@ -25,12 +25,31 @@ namespace dukglue {
       duk_put_prop_string(ctx, -2, "\xFF" "obj_ptr");
 
       // register it
-      dukglue::detail::RefManager::register_native_object(ctx, obj);
+	  if (!managed)
+		dukglue::detail::RefManager::register_native_object(ctx, obj);
 
       duk_pop(ctx); // pop this
 
       return 0;
     }
+
+	template <typename Cls>
+	static duk_ret_t managed_finalizer(duk_context* ctx)
+	{
+		duk_get_prop_string(ctx, 0, "\xFF" "obj_ptr");
+		Cls* obj = (Cls*) duk_require_pointer(ctx, -1);
+		duk_pop(ctx);  // pop obj_ptr
+
+		if (obj != NULL) {
+			delete obj;
+
+			// for safety, set the pointer to undefined
+			duk_push_undefined(ctx);
+			duk_put_prop_string(ctx, 0, "\xFF" "obj_ptr");
+		}
+
+		return 0;
+	}
 
 	template<typename Cls>
 	static duk_ret_t call_native_deleter(duk_context* ctx)

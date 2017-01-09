@@ -8,12 +8,39 @@
 template<class Cls, typename... Ts>
 void dukglue_register_constructor(duk_context* ctx, const char* name)
 {
-	duk_c_function constructor_func = dukglue::detail::call_native_constructor<Cls, Ts...>;
+	duk_c_function constructor_func = dukglue::detail::call_native_constructor<false, Cls, Ts...>;
 
 	duk_push_c_function(ctx, constructor_func, sizeof...(Ts));
 
 	// set constructor_func.prototype
 	dukglue::detail::ProtoManager::push_prototype<Cls>(ctx);
+	duk_put_prop_string(ctx, -2, "prototype");
+
+	// set name = constructor_func
+	duk_put_global_string(ctx, name);
+}
+
+template<class Cls, typename... Ts>
+void dukglue_register_constructor_managed(duk_context* ctx, const char* name)
+{
+	duk_c_function constructor_func = dukglue::detail::call_native_constructor<true, Cls, Ts...>;
+	duk_c_function finalizer_func = dukglue::detail::managed_finalizer<Cls>;
+
+	duk_push_c_function(ctx, constructor_func, sizeof...(Ts));
+
+	// create new prototype with finalizer
+	duk_push_object(ctx);
+
+	// set the finalizer
+	duk_push_c_function(ctx, finalizer_func, 1);
+	duk_set_finalizer(ctx, -2);
+
+	// hook prototype with finalizer up to real class prototype
+	// must use duk_set_prototype, not set the .prototype property
+	dukglue::detail::ProtoManager::push_prototype<Cls>(ctx);
+	duk_set_prototype(ctx, -2);
+
+	// set constructor_func.prototype to the prototype with the finalizer
 	duk_put_prop_string(ctx, -2, "prototype");
 
 	// set name = constructor_func
