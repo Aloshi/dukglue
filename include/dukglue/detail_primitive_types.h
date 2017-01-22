@@ -132,12 +132,13 @@ namespace dukglue {
 					duk_error(ctx, DUK_ERR_TYPE_ERROR, "Argument %d: expected array.", arg_idx);
 
 				duk_size_t len = duk_get_length(ctx, arg_idx);
+				const duk_idx_t elem_idx = duk_get_top(ctx);
 
 				std::vector<T> vec;
 				vec.reserve(len);
 				for (duk_size_t i = 0; i < len; i++) {
 					duk_get_prop_index(ctx, arg_idx, i);
-					vec.push_back(DukType< typename Bare<T>::type >::read<T>(ctx, -1));
+					vec.push_back(DukType< typename Bare<T>::type >::read<T>(ctx, elem_idx));
 					duk_pop(ctx);
 				}
 				return vec;
