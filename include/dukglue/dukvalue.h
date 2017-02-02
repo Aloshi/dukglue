@@ -181,7 +181,7 @@ public:
 			throw DukException() << "Cannot turn type into DukValue (" << value.type_name() << ")";
 		}
 
-		return std::move(value);
+		return value;
 	}
 
 protected:
@@ -263,14 +263,14 @@ public:
 			throw DukException() << "not implemented";
 		}
 
-		return std::move(v);
+		return v;
 	}
 
 	// same as above (copy_from_stack), but also removes the value we copied from the stack
 	static DukValue take_from_stack(duk_context* ctx, duk_idx_t idx = -1) {
 		DukValue val = copy_from_stack(ctx, idx);
 		duk_remove(ctx, idx);
-		return std::move(val);
+		return val;
 	}
 
 	// push the value we hold onto the stack
@@ -465,7 +465,7 @@ public:
 			throw DukException() << "Type not implemented for serialization.";
 		}
 
-		return std::move(buff);
+		return buff;
 	}
 
 private:

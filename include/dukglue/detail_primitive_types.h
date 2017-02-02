@@ -138,7 +138,7 @@ namespace dukglue {
 				vec.reserve(len);
 				for (duk_size_t i = 0; i < len; i++) {
 					duk_get_prop_index(ctx, arg_idx, i);
-					vec.push_back(DukType< typename Bare<T>::type >::read<T>(ctx, elem_idx));
+					vec.push_back(DukType< typename Bare<T>::type >::template read<T>(ctx, elem_idx));
 					duk_pop(ctx);
 				}
 				return vec;
@@ -149,7 +149,7 @@ namespace dukglue {
 				duk_idx_t obj_idx = duk_push_array(ctx);
 
 				for (size_t i = 0; i < value.size(); i++) {
-					DukType< typename Bare<T>::type >::push<T>(ctx, value[i]);
+					DukType< typename Bare<T>::type >::template push<T>(ctx, value[i]);
 					duk_put_prop_index(ctx, obj_idx, i);
 				}
 			}
