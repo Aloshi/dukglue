@@ -386,6 +386,37 @@ What Dukglue **doesn't do:**
 
     Basically, for this to be possible, Duktape needs support for weak references, so Dukglue can keep references without keeping them from being garbage collected.
 
+* Dukglue supports `std::shared_ptr`, but with two major caveats:
+
+    1. **Dynamic properties will not persist** - any properties not defined with `dukglue_register_property` will not be the same between two shared_ptrs pointing to the same object. For example:
+
+    ```cpp
+    std::shared_ptr<Resource> getResource() {
+      static std::shared_ptr<Resource> resource = std::make_shared<Resource>();
+      return resource;
+    }
+    ```
+
+    ```js
+    var resource = getResource();
+    tex.isAwesome = true;
+    var resourceAgain = getResource();
+    print(resourceAgain.isAwesome);  // prints undefined
+    print(tex.isAwesome);  // prints true
+    ```
+
+    (However, dynamic properties will stay on the object once it has entered script until it is garbage collected - `tex.isAwesome` will still be `true`.)
+
+    One minor upside to properties not persisting is that **std::shared_ptr objects don't need to call `dukglue_invalidate_reference()` when they are destroyed**.
+    
+    2. **JavaScript equality checks will not work**. This is because the current implementation treats shared_ptrs like a value type. 
+
+    ```js
+    print(tex === texAgain);  // prints false
+    ```
+
+    I'm not really happy with these caveats, but it was the fastest way to implement and it is acceptable for my use case. The entire implementation is in detail_primitive_types.h if you want to try and improve it (maybe try using Duktape's ES6 proxy subset?).
+
 * Dukglue *might* not follow the "compact footprint" goal of Duktape. I picked Duktape for it's simple API, not to script my toaster. YMMV if you're trying to compile this for a microcontroller. Why?
 
     * Dukglue currently needs RTTI turned on. When Dukglue checks if an object can be cast to a particular type, it uses the typeid operator to compare if two types are equal. It's always used on compile-time types though, so you could implement it without RTTI if you needed to. Dukglue also uses exceptions in two places: the `dukglue_pcall*` functions (since these return a value instead of an error code, unlike Duktape), and the `DukValue` class (to communicate type errors on getters and unsupported types).

@@ -50,6 +50,30 @@ std::string* get_ptr_cpp_string() {
 	return &str;
 }
 
+class Dog {
+public:
+	Dog(const char* name) : mName(name) {
+		sCount++;
+	}
+	virtual ~Dog() {
+		sCount--;
+	}
+
+	static int count() {
+		return sCount;
+	}
+
+	inline const std::string& name() const {
+		return mName;
+	}
+
+private:
+	static int sCount;
+	std::string mName;
+};
+
+int Dog::sCount = 0;
+
 void test_primitives() {
 	duk_context* ctx = duk_create_heap_default();
 
@@ -104,6 +128,44 @@ void test_primitives() {
 		test_assert(nums.at(0) == 1);
 		test_assert(nums.at(1) == 2);
 		test_assert(nums.at(2) == 3);
+	}
+
+	// std::shared_ptr
+	{
+		test_assert(Dog::count() == 0);
+
+		auto dog = std::make_shared<Dog>("Archie");
+		test_assert(Dog::count() == 1);
+
+		// can we push it?
+		dukglue_push(ctx, dog);
+		test_assert(Dog::count() == 1);
+
+		// save it somewhere - does the shared_ptr persist? (i.e. deleter not called)
+		duk_put_global_string(ctx, "testDog");
+		test_assert(Dog::count() == 1);
+
+		dog.reset();
+		test_assert(Dog::count() == 1);
+
+		// can we read it?
+		duk_get_global_string(ctx, "testDog");
+		dukglue_read< std::shared_ptr<Dog> >(ctx, -1, &dog);
+		duk_pop(ctx);
+
+		test_assert(dog->name() == "Archie");
+		test_assert(Dog::count() == 1);
+		dog.reset();
+
+		// remove it completely (should trigger shared_ptr deleter after GC)
+		duk_push_undefined(ctx);
+		duk_put_global_string(ctx, "testDog");
+
+		// intentionally called twice to make sure objects with finalizers are collected (see duk_gc docs)
+		duk_gc(ctx, 0);
+		duk_gc(ctx, 0);
+
+		test_assert(Dog::count() == 0);
 	}
 
 	test_assert(duk_get_top(ctx) == 0);
