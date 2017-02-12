@@ -28,6 +28,10 @@ public:
 		return ss.str();
 	}
 
+	int circleOnlyMethod() {
+		return 1;
+	}
+
 protected:
 	int radius_;
 };
@@ -59,6 +63,16 @@ void praiseCircle(Circle* circ) {
 
 void praiseShape(Shape* shape) {
 	std::cout << "This one is going right on the fridge" << std::endl;
+}
+
+Shape* makeShape(const std::string& name)
+{
+	if (name == "rectangle")
+		return new Rectangle(0, 0, 1, 1);
+	else if (name == "circle")
+		return new Circle(0, 0, 1);
+	else
+		return NULL;
 }
 
 void test_inheritance() {
@@ -101,6 +115,22 @@ void test_inheritance() {
 	test_eval(ctx, "circ.delete()");  // test inherited delete
 	test_eval(ctx, "rect.delete()");
 	duk_pop_2(ctx);
+
+	// test that we are picking the JavaScript prototype based
+	// on run-time type, not static type (issue #2)
+	{
+		dukglue_register_function(ctx, makeShape, "makeShape");
+		dukglue_register_method(ctx, &Circle::circleOnlyMethod, "circleOnlyMethod");
+
+		test_eval(ctx, "var rect = makeShape('rectangle'); var circ = makeShape('circle');");
+		duk_pop(ctx);
+
+		test_eval_expect_error(ctx, "rect.circleOnlyMethod()");
+		test_eval_expect(ctx, "circ.circleOnlyMethod();", 1);
+
+		test_eval(ctx, "rect.delete(); circ.delete();");
+		duk_pop(ctx);
+	}
 
 	test_assert(duk_get_top(ctx) == 0);
 	duk_destroy_heap(ctx);

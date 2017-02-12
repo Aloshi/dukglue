@@ -10,6 +10,7 @@ namespace dukglue
 		{
 		public:
 			TypeInfo(std::type_index&& idx) : index_(idx), base_(nullptr) {}
+			TypeInfo(const TypeInfo& rhs) : index_(rhs.index_), base_(rhs.base_) {}
 
 			inline void set_base(TypeInfo* base) {
 				base_ = base;

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "detail_typeinfo.h"
+#include <assert.h>
+#include "../../tests/duktape.h"  // TODO REMOVE THIS!
 
 namespace dukglue {
   namespace detail {
@@ -8,17 +10,22 @@ namespace dukglue {
 		struct ProtoManager
 		{
     public:
-      template<typename Cls>
+			template <typename Cls>
 			static void push_prototype(duk_context* ctx)
 			{
-				if (!find_and_push_prototype<Cls>(ctx)) {
+				push_prototype(ctx, TypeInfo(typeid(Cls)));
+			}
+
+			static void push_prototype(duk_context* ctx, const TypeInfo& check_info)
+			{
+				if (!find_and_push_prototype(ctx, check_info)) {
 					// nope, need to create our prototype object
 					duk_push_object(ctx);
 
 					// add reference to this class' info object so we can do type checking
 					// when trying to pass this object into method calls
 					typedef dukglue::detail::TypeInfo TypeInfo;
-					TypeInfo* info = new TypeInfo(typeid(Cls));
+					TypeInfo* info = new TypeInfo(check_info);
 
 					duk_push_pointer(ctx, info);
 					duk_put_prop_string(ctx, -2, "\xFF" "type_info");
@@ -43,7 +50,7 @@ namespace dukglue {
 				}
 			}
 
-      template<typename Cls>
+			template<typename Cls>
 			static void make_script_object(duk_context* ctx, Cls* obj)
 			{
 				duk_push_object(ctx);
@@ -51,7 +58,8 @@ namespace dukglue {
 				duk_push_pointer(ctx, obj);
 				duk_put_prop_string(ctx, -2, "\xFF" "obj_ptr");
 
-				push_prototype<Cls>(ctx);
+				assert(obj != NULL);
+				push_prototype(ctx, TypeInfo(typeid(*obj)));
 				duk_set_prototype(ctx, -2);
 			}
 
@@ -124,10 +132,7 @@ namespace dukglue {
 				duk_pop(ctx);  // pop prototypes_array
 			}
 
-      template<typename Cls>
-			static bool find_and_push_prototype(duk_context* ctx) {
-				const TypeInfo search_info = TypeInfo(typeid(Cls));
-
+			static bool find_and_push_prototype(duk_context* ctx, const TypeInfo& search_info) {
 				push_prototypes_array(ctx);
 
 				// these are ints and not duk_size_t to deal with negative indices
