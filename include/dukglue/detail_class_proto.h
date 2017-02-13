@@ -2,7 +2,6 @@
 
 #include "detail_typeinfo.h"
 #include <assert.h>
-#include "../../tests/duktape.h"  // TODO REMOVE THIS!
 
 namespace dukglue {
   namespace detail {
