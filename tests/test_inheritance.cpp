@@ -13,6 +13,9 @@ public:
 
 	virtual std::string describe() = 0;
 
+	inline int x() const { return x_; }
+	inline int y() const { return y_; }
+
 protected:
 	int x_;
 	int y_;
@@ -51,6 +54,16 @@ public:
 protected:
 	int width_;
 	int height_;
+};
+
+class Triangle : public Shape {
+public:
+	Triangle(int x, int y) : Shape(x, y) {}
+	virtual std::string describe() override {
+		std::stringstream ss;
+		ss << "A triangle centered at " << x() << ", " << y();
+		return ss.str();
+	}
 };
 
 void praiseRectangle(Rectangle* rect) {
@@ -116,8 +129,20 @@ void test_inheritance() {
 	test_eval(ctx, "rect.delete()");
 	duk_pop_2(ctx);
 
+#ifdef DUKGLUE_INFER_BASE_CLASS
+	// test that we pull from the compile-time type if no
+	// prototype for the run-time type exists when
+	// DUKGLUE_INFER_BASE_CLASS is enabled
+	{
+		Shape* tri = new Triangle(4, 3);
+		std::string str = dukglue_pcall_method<std::string>(ctx, tri, "describe");
+		test_assert(str == "A triangle centered at 4, 3");
+		delete tri;
+	}
+#endif
+
 	// test that we are picking the JavaScript prototype based
-	// on run-time type, not static type (issue #2)
+	// on run-time type, not static type (issue #3)
 	{
 		dukglue_register_function(ctx, makeShape, "makeShape");
 		dukglue_register_method(ctx, &Circle::circleOnlyMethod, "circleOnlyMethod");

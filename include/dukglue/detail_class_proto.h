@@ -52,13 +52,43 @@ namespace dukglue {
 			template<typename Cls>
 			static void make_script_object(duk_context* ctx, Cls* obj)
 			{
-				duk_push_object(ctx);
+				assert(obj != NULL);
 
+				duk_push_object(ctx);
 				duk_push_pointer(ctx, obj);
 				duk_put_prop_string(ctx, -2, "\xFF" "obj_ptr");
 
-				assert(obj != NULL);
+				// push the appropriate prototype
+#ifdef DUKGLUE_INFER_BASE_CLASS
+				// In the "infer base class" case, we push the prototype
+				// corresponding to the compile-time class if no prototype
+				// for the run-time type has been defined. This allows us to
+				// skip calling dukglue_set_base_class() for every derived class,
+				// so long as we:
+				// (1) Always use the derived class as a pointer typed as the base class
+				// (2) Do not create a prototype for the derived class
+				//     (i.e. do not register any functions on the derived class).
+
+				// For big projects with hundreds of derived classes, this is preferrable
+				// to registering each type's base class individually. However,
+				// registering a native method on a derived class will cause the
+				// base class's methods to disappear until dukglue_set_base_class() is
+				// also called (because registering the native method causes a prototype
+				// to be created for the run-time type). This behavior may be unexpected,
+				// and for "small" projects it is reasonable to require
+				// dukglue_set_base_class() to be called, so it is opt-in via an ifdef.
+
+				// does a prototype exist for the run-time type? if so, push it
+				if (!find_and_push_prototype(ctx, TypeInfo(typeid(*obj)))) {
+					// nope, find or create the prototype for the compile-time type
+					// and push that
+					push_prototype<Cls>(ctx);
+				}
+#else
+				// always use the prototype for the run-time type
 				push_prototype(ctx, TypeInfo(typeid(*obj)));
+#endif
+
 				duk_set_prototype(ctx, -2);
 			}
 
