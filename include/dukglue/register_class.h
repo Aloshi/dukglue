@@ -172,7 +172,7 @@ void dukglue_register_method_varargs(duk_context* ctx,
 
 	duk_push_c_function(ctx, method_func, DUK_VARARGS);
 
-	duk_push_pointer(ctx, new typename MethodVariadicInfo::MethodHolder{ method });
+	duk_push_pointer(ctx, new typename MethodVariadicInfo::MethodHolderVariadic{ method });
 	duk_put_prop_string(ctx, -2, "\xFF" "method_holder");  // consumes raw method pointer
 
 	// make sure we free the method_holder when this function is removed
