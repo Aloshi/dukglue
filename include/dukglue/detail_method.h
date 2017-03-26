@@ -140,12 +140,12 @@ namespace dukglue
 		template <bool isConst, typename Cls>
 		struct MethodVariadicRuntime
 		{
-			typedef MethodInfo<isConst, Cls, duk_ret_t, duk_context*> MethodInfo;
-			typedef typename MethodInfo::MethodHolder MethodHolder;
+			typedef MethodInfo<isConst, Cls, duk_ret_t, duk_context*> MethodInfoVariadic;
+			typedef typename MethodInfoVariadic::MethodHolder MethodHolderVariadic;
 
 			static duk_ret_t finalize_method(duk_context* ctx)
 			{
-				return MethodInfo::MethodRuntime::finalize_method(ctx);
+				return MethodInfoVariadic::MethodRuntime::finalize_method(ctx);
 			}
 
 			static duk_ret_t call_native_method(duk_context* ctx)
@@ -174,7 +174,7 @@ namespace dukglue
 
 				// (should always be valid unless someone is intentionally messing with this.obj_ptr...)
 				Cls* obj = static_cast<Cls*>(obj_void);
-				MethodHolder* method_holder = static_cast<MethodHolder*>(method_holder_void);
+				MethodHolderVariadic* method_holder = static_cast<MethodHolderVariadic*>(method_holder_void);
 
 				return (*obj.*method_holder->method)(ctx);
 			}

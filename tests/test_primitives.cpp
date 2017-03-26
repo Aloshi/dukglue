@@ -50,12 +50,12 @@ std::string* get_ptr_cpp_string() {
 	return &str;
 }
 
-class Dog {
+class DogPrimitive {
 public:
-	Dog(const char* name) : mName(name) {
+	DogPrimitive(const char* name) : mName(name) {
 		sCount++;
 	}
-	virtual ~Dog() {
+	virtual ~DogPrimitive() {
 		sCount--;
 	}
 
@@ -72,7 +72,7 @@ private:
 	std::string mName;
 };
 
-int Dog::sCount = 0;
+int DogPrimitive::sCount = 0;
 
 void test_primitives() {
 	duk_context* ctx = duk_create_heap_default();
@@ -132,29 +132,29 @@ void test_primitives() {
 
 	// std::shared_ptr
 	{
-		test_assert(Dog::count() == 0);
+		test_assert(DogPrimitive::count() == 0);
 
-		auto dog = std::make_shared<Dog>("Archie");
-		test_assert(Dog::count() == 1);
+		auto dog = std::make_shared<DogPrimitive>("Archie");
+		test_assert(DogPrimitive::count() == 1);
 
 		// can we push it?
 		dukglue_push(ctx, dog);
-		test_assert(Dog::count() == 1);
+		test_assert(DogPrimitive::count() == 1);
 
 		// save it somewhere - does the shared_ptr persist? (i.e. deleter not called)
 		duk_put_global_string(ctx, "testDog");
-		test_assert(Dog::count() == 1);
+		test_assert(DogPrimitive::count() == 1);
 
 		dog.reset();
-		test_assert(Dog::count() == 1);
+		test_assert(DogPrimitive::count() == 1);
 
 		// can we read it?
 		duk_get_global_string(ctx, "testDog");
-		dukglue_read< std::shared_ptr<Dog> >(ctx, -1, &dog);
+		dukglue_read< std::shared_ptr<DogPrimitive> >(ctx, -1, &dog);
 		duk_pop(ctx);
 
 		test_assert(dog->name() == "Archie");
-		test_assert(Dog::count() == 1);
+		test_assert(DogPrimitive::count() == 1);
 		dog.reset();
 
 		// remove it completely (should trigger shared_ptr deleter after GC)
@@ -165,7 +165,7 @@ void test_primitives() {
 		duk_gc(ctx, 0);
 		duk_gc(ctx, 0);
 
-		test_assert(Dog::count() == 0);
+		test_assert(DogPrimitive::count() == 0);
 	}
 
 	test_assert(duk_get_top(ctx) == 0);
