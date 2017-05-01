@@ -185,7 +185,12 @@ public:
 	}
 
 protected:
+
+#if (DUK_VERSION >= 20000L)
+	static duk_ret_t json_decode_safe(duk_context* ctx, void* udata)
+#else
 	static duk_ret_t json_decode_safe(duk_context* ctx)
+#endif
 	{
 		duk_json_decode(ctx, -1);
 		return 1;
@@ -249,7 +254,12 @@ public:
 
 			const char* json_data = (data_ptr + sizeof(uint32_t));
 			duk_push_lstring(ctx, json_data, json_len);
+
+#if (DUK_VERSION >= 20000L)
+			int rc = duk_safe_call(ctx, &json_decode_safe, nullptr, 1, 1);
+#else
 			int rc = duk_safe_call(ctx, &json_decode_safe, 1, 1);
+#endif
 			if (rc) {
 				throw DukErrorException(ctx, rc) << "Could not decode JSON";
 			} else {
