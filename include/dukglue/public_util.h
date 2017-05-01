@@ -89,7 +89,12 @@ void call_method_safe_helper(duk_context* ctx, const ObjT& obj, const char* meth
 }
 
 template <typename RetT, typename ObjT, typename... ArgTs>
+
+#if (DUK_VERSION >= 20000L)
+typename std::enable_if<std::is_void<RetT>::value, duk_idx_t>::type call_method_safe(duk_context* ctx, void* udata)
+#else
 typename std::enable_if<std::is_void<RetT>::value, duk_idx_t>::type call_method_safe(duk_context* ctx)
+#endif
 {
 	ObjT* obj = (ObjT*)duk_require_pointer(ctx, -3);
 	const char* method_name = (const char*)duk_require_pointer(ctx, -2);
@@ -102,7 +107,11 @@ typename std::enable_if<std::is_void<RetT>::value, duk_idx_t>::type call_method_
 }
 
 template <typename RetT, typename ObjT, typename... ArgTs>
+#if (DUK_VERSION >= 20000L)
+typename std::enable_if<!std::is_void<RetT>::value, duk_idx_t>::type call_method_safe(duk_context* ctx, void* udata)
+#else
 typename std::enable_if<!std::is_void<RetT>::value, duk_idx_t>::type call_method_safe(duk_context* ctx)
+#endif
 {
 	ObjT* obj = (ObjT*)duk_require_pointer(ctx, -4);
 	const char* method_name = (const char*)duk_require_pointer(ctx, -3);
@@ -128,7 +137,11 @@ typename std::enable_if<std::is_void<RetT>::value, RetT>::type dukglue_pcall_met
 	duk_push_pointer(ctx, (void*)method_name);
 	duk_push_pointer(ctx, (void*)&tuple);
 	
+#if (DUK_VERSION >= 20000L)
+	duk_idx_t rc = duk_safe_call(ctx, &dukglue::detail::call_method_safe<RetT, ObjT, ArgTs...>, nullptr, 3, 1);
+#else
 	duk_idx_t rc = duk_safe_call(ctx, &dukglue::detail::call_method_safe<RetT, ObjT, ArgTs...>, 3, 1);
+#endif
 	if (rc != 0)
 		throw DukErrorException(ctx, rc);
 
@@ -146,7 +159,11 @@ typename std::enable_if<!std::is_void<RetT>::value, RetT>::type dukglue_pcall_me
 	duk_push_pointer(ctx, (void*)&tuple);
 	duk_push_pointer(ctx, (void*)&out);
 
+#if (DUK_VERSION >= 20000L)
+	duk_idx_t rc = duk_safe_call(ctx, &dukglue::detail::call_method_safe<RetT, ObjT, ArgTs...>, nullptr, 4, 1);
+#else
 	duk_idx_t rc = duk_safe_call(ctx, &dukglue::detail::call_method_safe<RetT, ObjT, ArgTs...>, 4, 1);
+#endif
 	if (rc != 0)
 		throw DukErrorException(ctx, rc);
 
@@ -225,7 +242,11 @@ typename std::enable_if<std::is_void<RetT>::value, RetT>::type dukglue_pcall(duk
 
 	duk_push_pointer(ctx, (void*) &obj);
 	duk_push_pointer(ctx, (void*) &tuple);
+#if (DUK_VERSION >= 20000L)
+	duk_int_t rc = duk_safe_call(ctx, &dukglue::detail::call_safe<RetT, ObjT, ArgTs...>, nullptr, 2, 1);
+#else
 	duk_int_t rc = duk_safe_call(ctx, &dukglue::detail::call_safe<RetT, ObjT, ArgTs...>, 2, 1);
+#endif
 	if (rc != 0)
 		throw DukErrorException(ctx, rc);
 	duk_pop(ctx);  // remove result from stack
@@ -240,7 +261,11 @@ typename std::enable_if<!std::is_void<RetT>::value, RetT>::type dukglue_pcall(du
 	duk_push_pointer(ctx, (void*)&obj);
 	duk_push_pointer(ctx, (void*)&tuple);
 	duk_push_pointer(ctx, (void*)&result);
-	duk_int_t rc = duk_safe_call(ctx, &dukglue::detail::call_safe<RetT, ObjT, ArgTs...>, 3, 1);
+#if (DUK_VERSION >= 20000L)
+	duk_int_t rc = duk_safe_call(ctx, &dukglue::detail::call_safe<RetT, ObjT, ArgTs...>, nullptr, 3, 1);
+#else
+	duk_int_t rc = duk_safe_call(ctx, &dukglue::detail::call_safe<RetT, ObjT, ArgTs...>, nullptr, 3, 1);
+#endif
 	if (rc != 0)
 		throw DukErrorException(ctx, rc);
 	
@@ -287,7 +312,12 @@ typename std::enable_if<!std::is_void<RetT>::value, RetT>::type dukglue_peval(du
 	RetT ret;
 	duk_push_pointer(ctx, (void*)str);
 	duk_push_pointer(ctx, (void*)&ret);
+
+#if (DUK_VERSION >= 20000L)
+	int rc = duk_safe_call(ctx, &dukglue::detail::eval_safe<RetT>, nullptr, 2, 1);
+#else
 	int rc = duk_safe_call(ctx, &dukglue::detail::eval_safe<RetT>, 2, 1);
+#endif
 	if (rc != 0)
 		throw DukErrorException(ctx, rc);
 	duk_pop_n(ctx, duk_get_top(ctx) - prev_top);  // pop any results
