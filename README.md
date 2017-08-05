@@ -3,6 +3,8 @@ Dukglue
 
 A C++ extension to the embeddable Javascript engine [Duktape](http://duktape.org/).
 
+NOTE: The master branch is for Duktape 2.x. Check the `duktape_1.x` branch if you want to use the older Duktape 1.x.
+
 Dukglue offers:
 
 * An easy, type-safe way to bind functions:

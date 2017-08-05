@@ -185,7 +185,7 @@ public:
 	}
 
 protected:
-	static duk_ret_t json_decode_safe(duk_context* ctx)
+	static duk_ret_t json_decode_safe(duk_context* ctx, void* user_data)
 	{
 		duk_json_decode(ctx, -1);
 		return 1;
@@ -249,7 +249,7 @@ public:
 
 			const char* json_data = (data_ptr + sizeof(uint32_t));
 			duk_push_lstring(ctx, json_data, json_len);
-			int rc = duk_safe_call(ctx, &json_decode_safe, 1, 1);
+			int rc = duk_safe_call(ctx, &json_decode_safe, NULL, 1, 1);
 			if (rc) {
 				throw DukErrorException(ctx, rc) << "Could not decode JSON";
 			} else {
