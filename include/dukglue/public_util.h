@@ -243,6 +243,17 @@ typename std::enable_if<!std::is_void<RetT>::value, RetT>::type dukglue_pcall(du
 	return std::move(result);
 }
 
+// same as dukglue_pcall, but leaves the result or error on the stack and returns the Duktape return code
+template <typename ObjT, typename... ArgTs>
+duk_int_t dukglue_pcall_raw(duk_context* ctx, const ObjT& obj, ArgTs... args)
+{
+	dukglue::detail::SafeCallData<void, ObjT, ArgTs...> data{
+		&obj, std::tuple<ArgTs...>(args...), nullptr
+	};
+
+	return duk_safe_call(ctx, &dukglue::detail::call_safe<void, ObjT, ArgTs...>, (void*)&data, 0, 1);
+}
+
 
 // peval
 namespace dukglue {
