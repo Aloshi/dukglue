@@ -10,7 +10,28 @@
 
 namespace dukglue {
 	namespace types {
-		#define DUKGLUE_SIMPLE_VALUE_TYPE(TYPE, DUK_IS_FUNC, DUK_GET_FUNC, DUK_PUSH_FUNC, PUSH_VALUE) \
+		// same as duk_get_type_name, which is private for some reason *shakes fist*
+		static const char* get_type_name(duk_int_t type_idx) {
+			static const char* names[] = {
+				"none",
+				"undefined",
+				"null",
+				"boolean",
+				"number",
+				"string",
+				"object",
+				"buffer",
+				"pointer",
+				"lightfunc"
+			};
+
+			if (type_idx >= 0 && type_idx < sizeof(names) / sizeof(names[0]))
+				return names[type_idx];
+			else
+				return "unknown";
+		}
+
+#define DUKGLUE_SIMPLE_VALUE_TYPE(TYPE, DUK_IS_FUNC, DUK_GET_FUNC, DUK_PUSH_FUNC, PUSH_VALUE) \
 		template<> \
 		struct DukType<TYPE> { \
 			typedef std::true_type IsValueType; \
@@ -20,7 +41,8 @@ namespace dukglue {
 				if (DUK_IS_FUNC(ctx, arg_idx)) { \
 					return static_cast<TYPE>(DUK_GET_FUNC(ctx, arg_idx)); \
 				} else { \
-					duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: expected " #TYPE, arg_idx); \
+					duk_int_t type_idx = duk_get_type(ctx, arg_idx); \
+					duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: expected " #TYPE ", got %s", arg_idx, get_type_name(type_idx)); \
 				} \
 			} \
 			\
@@ -77,7 +99,8 @@ namespace dukglue {
 				if (duk_is_string(ctx, arg_idx)) {
 					return duk_get_string(ctx, arg_idx);
 				} else {
-					duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: expected string", arg_idx);
+					duk_int_t type_idx = duk_get_type(ctx, arg_idx);
+					duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: expected string, got %s", arg_idx, get_type_name(type_idx));
 				}
 			}
 
@@ -130,8 +153,10 @@ namespace dukglue {
 
 			template <typename FullT>
 			static std::vector<T> read(duk_context* ctx, duk_idx_t arg_idx) {
-				if (!duk_is_array(ctx, arg_idx))
-					duk_error(ctx, DUK_ERR_TYPE_ERROR, "Argument %d: expected array.", arg_idx);
+				if (!duk_is_array(ctx, arg_idx)) {
+					duk_int_t type_idx = duk_get_type(ctx, arg_idx);
+					duk_error(ctx, DUK_ERR_TYPE_ERROR, "Argument %d: expected array, got %s", arg_idx, get_type_name(type_idx));
+				}
 
 				duk_size_t len = duk_get_length(ctx, arg_idx);
 				const duk_idx_t elem_idx = duk_get_top(ctx);
@@ -169,8 +194,10 @@ namespace dukglue {
 				if (duk_is_null(ctx, arg_idx))
 					return nullptr;
 
-				if (!duk_is_object(ctx, arg_idx))
-					duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: expected shared_ptr object", arg_idx);
+				if (!duk_is_object(ctx, arg_idx)) {
+					duk_int_t type_idx = duk_get_type(ctx, arg_idx);
+					duk_error(ctx, DUK_RET_TYPE_ERROR, "Argument %d: expected shared_ptr object, got ", arg_idx, get_type_name(type_idx));
+				}
 
 				duk_get_prop_string(ctx, arg_idx, "\xFF" "type_info");
 				if (!duk_is_pointer(ctx, -1))  // missing type_info, must not be a native object
