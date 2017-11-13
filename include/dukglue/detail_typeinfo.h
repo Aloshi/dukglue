@@ -6,6 +6,27 @@ namespace dukglue
 {
 	namespace detail
 	{
+		// same as duk_get_type_name, which is private for some reason *shakes fist*
+		static const char* get_type_name(duk_int_t type_idx) {
+			static const char* names[] = {
+				"none",
+				"undefined",
+				"null",
+				"boolean",
+				"number",
+				"string",
+				"object",
+				"buffer",
+				"pointer",
+				"lightfunc"
+			};
+
+			if (type_idx >= 0 && type_idx < sizeof(names) / sizeof(names[0]))
+				return names[type_idx];
+			else
+				return "unknown";
+		}
+
 		class TypeInfo
 		{
 		public:
