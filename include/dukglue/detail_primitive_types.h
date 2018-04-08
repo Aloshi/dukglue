@@ -5,6 +5,7 @@
 #include "dukvalue.h"
 
 #include <vector>
+#include <map>
 #include <stdint.h>
 #include <memory>  // for std::shared_ptr
 
@@ -127,6 +128,7 @@ namespace dukglue {
 		};
 
 		// std::vector (as value)
+		// TODO - probably leaks memory if duktape is using longjmp and an error is encountered while reading an element
 		template<typename T>
 		struct DukType< std::vector<T> > {
 			typedef std::true_type IsValueType;
@@ -227,6 +229,37 @@ namespace dukglue {
 				// set shared_ptr finalizer
 				duk_push_c_function(ctx, &shared_ptr_finalizer, 1);
 				duk_set_finalizer(ctx, -2);
+			}
+		};
+
+		// std::map (as value)
+		// TODO - probably leaks memory if duktape is using longjmp and an error is encountered while reading values
+		template<typename T>
+		struct DukType< std::map<std::string, T> > {
+			typedef std::true_type IsValueType;
+
+			template <typename FullT>
+			static std::map<std::string, T> read(duk_context* ctx, duk_idx_t arg_idx) {
+				if (!duk_is_object(ctx, arg_idx))
+					duk_error(ctx, DUK_ERR_TYPE_ERROR, "Argument %d: expected object.", arg_idx);
+
+				std::map<std::string, T> map;
+				duk_enum(ctx, -1, DUK_ENUM_OWN_PROPERTIES_ONLY);
+				while (duk_next(ctx, -1, 1)) {
+					map[duk_safe_to_string(ctx, -2)] = DukType<typename Bare<T>::type>::template read<T>(ctx, -1);
+					duk_pop_2(ctx);
+				}
+				duk_pop(ctx);  // pop enum object
+				return map;
+			}
+
+			template <typename FullT>
+			static void push(duk_context* ctx, const std::map<std::string, T>& value) {
+				duk_idx_t obj_idx = duk_push_object(ctx);
+				for (const auto& kv : value) {
+					DukType<typename Bare<T>::type>::template push<T>(ctx, kv.second);
+					duk_put_prop_lstring(ctx, obj_idx, kv.first.data(), kv.first.size());
+				}
 			}
 		};
 
