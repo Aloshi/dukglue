@@ -70,10 +70,23 @@ namespace dukglue
             return pf(std::forward<Args>(std::get<Indexes>(tup))...);
         }
         
+        // function pointer
+        template<class Cls, class Ret, class... Args, class... BakedArgs, size_t... Indexes >
+        Ret apply_fp_helper_intercepted(Cls* obj, duk_context* ctx, Ret(*pf)(Cls* obj, duk_context* ctx, Args...), index_tuple< Indexes... >, std::tuple<BakedArgs...>&& tup)
+        {
+            return pf(obj, ctx, std::forward<Args>(std::get<Indexes>(tup))...);
+        }
+        
         template<class Ret, class ... Args, class ... BakedArgs>
         Ret apply_fp(Ret(*pf)(Args...), const std::tuple<BakedArgs...>&  tup)
         {
             return apply_fp_helper(pf, typename make_indexes<BakedArgs...>::type(), std::tuple<BakedArgs...>(tup));
+        }
+        
+        template<class Cls, class Ret, class ... Args, class ... BakedArgs>
+        Ret apply_fp_intercepted(Cls* obj, duk_context* ctx, Ret(*pf)(Cls* obj, duk_context* ctx, Args...), const std::tuple<BakedArgs...>&  tup)
+        {
+            return apply_fp_helper_intercepted(obj, ctx, pf, typename make_indexes<BakedArgs...>::type(), std::tuple<BakedArgs...>(tup));
         }
         
         // method pointer

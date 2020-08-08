@@ -113,6 +113,31 @@ void dukglue_register_method(duk_context* ctx, RetType(Cls::*method)(Ts...), con
 	dukglue_register_method<false, Cls, RetType, Ts...>(ctx, method, name);
 }
 
+
+template<class Cls, typename RetType, typename... Ts>
+void dukglue_register_intercepted_method(duk_context* ctx, const char* name, RetType(*funcToCall)(Cls*, duk_context*ctx, Ts...))
+{
+    using namespace dukglue::detail;
+    typedef MethodInfo<false, Cls, RetType, Ts...> MethodInfo;
+
+    duk_c_function method_func = MethodInfo::InterceptedMethodRuntime::call_native_method;
+
+    ProtoManager::push_prototype<Cls>(ctx);
+
+    duk_push_c_function(ctx, method_func, sizeof...(Ts));
+
+    duk_push_pointer(ctx, reinterpret_cast<void*>(funcToCall));
+    duk_put_prop_string(ctx, -2, "\xFF" "func_ptr"); // consumes raw method pointer
+
+    // make sure we free the method_holder when this function is removed
+    duk_push_c_function(ctx, MethodInfo::InterceptedMethodRuntime::finalize_method, 1);
+    duk_set_finalizer(ctx, -2);
+
+    duk_put_prop_string(ctx, -2, name); // consumes method function
+
+    duk_pop(ctx); // pop prototype
+}
+
 template<class Cls, typename RetType, typename... Ts>
 void dukglue_register_method(duk_context* ctx, RetType(Cls::*method)(Ts...) const, const char* name)
 {
