@@ -5,7 +5,6 @@ add_library(dukglue INTERFACE)
 #target_include_directories(dukglue ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(DUKGLUE_HEADERS
-  ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/dukglue.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/detail_class_proto.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/detail_constructor.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dukglue/detail_function.h

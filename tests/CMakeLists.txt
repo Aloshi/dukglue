@@ -9,13 +9,10 @@ add_executable(dukglue_test
   test_primitives.cpp
   test_properties.cpp
   test_dukvalue.cpp
-
-  duktape.h
-  duktape.c
-  duk_config.h
 )
 
-# this is stupid
-target_include_directories(dukglue_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include .)
+# Duktape
+find_package(Duktape)
+target_link_libraries(dukglue_test PUBLIC duktape dukglue)
 
 target_compile_features(dukglue_test PRIVATE cxx_variadic_templates cxx_auto_type)
