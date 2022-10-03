@@ -10,7 +10,7 @@ endif()
 option(DUKGLUE_BUILD_TESTS "Tests" ${DUKGLUE_IS_MAIN})
 
 # Register the cmake_modules folder
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/../cmake_modules)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules)
 
 # Includes
 add_subdirectory(include)
