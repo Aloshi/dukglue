@@ -311,7 +311,7 @@ void test_dukvalue()
 	{
 		NativeObject* obj = new NativeObject();
 		dukglue_register_global(ctx, obj, "obj");
-		
+
 		dukglue_register_method(ctx, &NativeObject::multiply, "multiplyNative");
 
 		// create a method named testMethod on native object obj
@@ -355,7 +355,7 @@ void test_dukvalue()
 		// test pcall_method with no arguments
 		{
 			dukglue_peval<void>(ctx, "obj.noArgsMethod = function() { return 42; }");
-			
+
 			int res = dukglue_pcall_method<int>(ctx, obj, "noArgsMethod");
 			test_assert(res == 42);
 
