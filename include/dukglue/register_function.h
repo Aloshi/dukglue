@@ -27,7 +27,7 @@ void dukglue_register_function(duk_context* ctx, RetType(*funcToCall)(Ts...), co
 
 	duk_push_c_function(ctx, evalFunc, sizeof...(Ts));
 
-  static_assert(sizeof(RetType(*)(Ts...)) == sizeof(void*), "Function pointer and data pointer are different sizes");
+    static_assert(sizeof(RetType(*)(Ts...)) == sizeof(void*), "Function pointer and data pointer are different sizes");
 	duk_push_pointer(ctx, reinterpret_cast<void*>(funcToCall));
 	duk_put_prop_string(ctx, -2, "\xFF" "func_ptr");
 
