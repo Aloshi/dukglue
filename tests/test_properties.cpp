@@ -35,7 +35,7 @@ void test_properties()
 	duk_pop(ctx);
 	test_eval_expect(ctx, "test.value", 0);
 	test_eval_expect_error(ctx, "test.value = 42");
-	
+
 	// test const getter + setter
 	dukglue_register_property(ctx, &MyClass::getValue, &MyClass::setValue, "value");
 	test_eval(ctx, "test.value = 42");
