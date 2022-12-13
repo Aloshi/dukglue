@@ -33,3 +33,35 @@ void dukglue_register_function(duk_context* ctx, RetType(*funcToCall)(Ts...), co
 
 	duk_put_global_string(ctx, name);
 }
+
+
+// Register a function as a property to a object.
+// Simply does the same as the above but replaces duk_put_global_string with duk_put_prop_string
+template<typename RetType, typename... Ts>
+void dukglue_register_function_property(duk_context* ctx, RetType(*funcToCall)(Ts...), const char* name)
+{
+	duk_c_function evalFunc = dukglue::detail::FuncInfoHolder<RetType, Ts...>::FuncRuntime::call_native_function;
+
+	duk_push_c_function(ctx, evalFunc, sizeof...(Ts));
+
+  static_assert(sizeof(RetType(*)(Ts...)) == sizeof(void*), "Function pointer and data pointer are different sizes");
+	duk_push_pointer(ctx, reinterpret_cast<void*>(funcToCall));
+	duk_put_prop_string(ctx, -2, "\xFF" "func_ptr");
+	
+	duk_put_prop_string(ctx, -2, name);
+}
+
+// Register a function as a property to a object using the objects index.
+template<typename RetType, typename... Ts>
+void dukglue_register_function_property(duk_context* ctx, RetType(*funcToCall)(Ts...), duk_idx_t objectIdx, const char* name)
+{
+	duk_c_function evalFunc = dukglue::detail::FuncInfoHolder<RetType, Ts...>::FuncRuntime::call_native_function;
+
+	duk_push_c_function(ctx, evalFunc, sizeof...(Ts));
+
+  static_assert(sizeof(RetType(*)(Ts...)) == sizeof(void*), "Function pointer and data pointer are different sizes");
+	duk_push_pointer(ctx, reinterpret_cast<void*>(funcToCall));
+	duk_put_prop_string(ctx, -2, "\xFF" "func_ptr");
+	
+	duk_put_prop_string(ctx, objectIdx, name);
+}
