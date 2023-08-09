@@ -65,6 +65,7 @@ void dukglue_register_property(duk_context* ctx, std::nullptr_t getter, std::nul
 inline duk_ret_t dukglue_throw_error(duk_context* ctx)
 {
 	duk_error(ctx, DUK_ERR_TYPE_ERROR, "Property does not have getter or setter.");
+	return 0;
 }
 
 template <bool isConstGetter, typename Cls, typename RetT, typename ArgT>
